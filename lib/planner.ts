@@ -1,4 +1,4 @@
-export type Task = { id: string; title: string; area: string; project: string; notes: string; priority: number; minutes: number; status: 'inbox'|'todo'|'doing'|'waiting'|'done'; planDate: string; deadline: string; followUp: string; top: boolean; updated: string; created: string; completed: string };
+export type Task = { id: string; title: string; area: string; project: string; notes: string; priority: number; minutes: number; status: 'inbox'|'todo'|'doing'|'waiting'|'done'; planDate: string; deadline: string; followUp: string; top: boolean; updated: string; created: string; completed: string; externalRef?: string };
 export type Data = { tasks: Task[]; budgets: Record<string,number> };
 export const areas = ['Personal','Trabajo','Estudio','Iglesia','Proyectos'];
 export const states: Record<Task['status'],string> = {inbox:'Sin organizar',todo:'Pendiente',doing:'En curso',waiting:'Esperando',done:'Completada'};
