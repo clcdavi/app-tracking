@@ -1,5 +1,5 @@
 import { database } from '@/db/raw';
-import { apiReply, ensureIntegrationKeyTable, hashIntegrationToken } from '@/lib/integration-keys';
+import { apiReply, ensureIntegrationKeyTable, hashIntegrationToken, readLimitedBody } from '@/lib/integration-keys';
 import { Task, Data } from '@/lib/planner';
 import { z } from 'zod';
 
@@ -27,8 +27,8 @@ export async function POST(req: Request) {
   if (!match) return reply({ error: 'Falta una clave válida en Authorization: Bearer.' }, 401, { 'WWW-Authenticate': 'Bearer' });
 
   try {
-    const raw = await req.text();
-    if (new TextEncoder().encode(raw).length > 100_000) return reply({ error: 'El lote supera el máximo de 100 KB.' }, 413);
+    const raw = await readLimitedBody(req, 100_000);
+    if (raw === null) return reply({ error: 'El lote supera el máximo de 100 KB.' }, 413);
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return reply({ error: 'El cuerpo debe ser JSON válido.' }, 400); }
     const parsed = payloadSchema.safeParse(body);

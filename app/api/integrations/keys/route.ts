@@ -1,6 +1,6 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { database } from '@/db/raw';
-import { apiReply, createIntegrationToken, ensureIntegrationKeyTable, hashIntegrationToken, sameOrigin } from '@/lib/integration-keys';
+import { apiReply, createIntegrationToken, ensureIntegrationKeyTable, hashIntegrationToken, readLimitedBody, sameOrigin } from '@/lib/integration-keys';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -24,8 +24,8 @@ export async function POST(req: Request) {
   if (!user) return apiReply({ error: 'Iniciá sesión para crear una conexión.' }, 401);
   if (!sameOrigin(req)) return apiReply({ error: 'Origen no permitido.' }, 403);
   try {
-    const raw = await req.text();
-    if (new TextEncoder().encode(raw).length > 2000) return apiReply({ error: 'La solicitud es demasiado grande.' }, 413);
+    const raw = await readLimitedBody(req, 2000);
+    if (raw === null) return apiReply({ error: 'La solicitud es demasiado grande.' }, 413);
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return apiReply({ error: 'Formato inválido.' }, 400); }
     const parsed = z.object({ name: z.string().trim().min(1).max(80) }).safeParse(body);
