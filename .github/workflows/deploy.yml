@@ -1,0 +1,57 @@
+name: CI/CD - Deploy to Oracle Cloud
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests and Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Run test suite
+        run: npm test
+
+  deploy:
+    name: Deploy to Oracle VPS
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: ${{ secrets.ORACLE_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "🚀 Actualizando código desde main..."
+            cd ~/app-tracking
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "📦 Reconstruyendo contenedores Docker..."
+            sudo docker compose up -d --build
+
+            echo "🧹 Limpiando imágenes antiguas en desuso..."
+            sudo docker image prune -f
+
+            echo "✅ Despliegue completado con éxito."
