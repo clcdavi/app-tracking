@@ -3,10 +3,13 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db } from '@/db';
 import { users, sessions } from '@/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, lt } from 'drizzle-orm';
 
 export const SESSION_COOKIE_NAME = 'enfoco_session';
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
+// Pre-computed bcrypt cost-12 hash used for constant-time comparisons when a user is not found
+export const DUMMY_PASSWORD_HASH = '$2a$12$e80MvQkKjJbX6Rz/9fBHeuJvU1w2KqE9eFm9B8Y6vH5jJ2K4l.2.a';
 
 export type AuthUser = {
   id: string;
@@ -29,6 +32,13 @@ export function generateSessionToken(): string {
 export async function createSession(userId: string): Promise<string> {
   const token = generateSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+
+  // Opportunistic cleanup of expired sessions
+  try {
+    await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
+  } catch (e) {
+    console.error('Opportunistic session cleanup error:', e);
+  }
 
   await db.insert(sessions).values({
     id: token,
@@ -73,7 +83,11 @@ export async function destroySession(): Promise<void> {
     }
   }
 
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  cookieStore.set(SESSION_COOKIE_NAME, '', {
+    httpOnly: true,
+    path: '/',
+    maxAge: 0,
+  });
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {

@@ -29,6 +29,8 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-enfoco}:${DB_PASSWORD:-cambiar_password_seguro}@db:5432/${DB_NAME:-enfoco_db}
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
       TZ: America/Argentina/Buenos_Aires
       NODE_ENV: production
     healthcheck:

@@ -9,7 +9,11 @@ declare global {
   var __dbClient: NodePgDatabase<typeof schema> | undefined;
 }
 
+let poolInstance: Pool | undefined;
+let dbInstance: NodePgDatabase<typeof schema> | undefined;
+
 export function getPool(): Pool {
+  if (poolInstance) return poolInstance;
   if (global.__dbPool) return global.__dbPool;
 
   const connectionString = process.env.DATABASE_URL;
@@ -25,21 +29,20 @@ export function getPool(): Pool {
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    global.__dbPool = newPool;
-  }
+  poolInstance = newPool;
+  global.__dbPool = newPool;
   return newPool;
 }
 
 export function getDb(): NodePgDatabase<typeof schema> {
+  if (dbInstance) return dbInstance;
   if (global.__dbClient) return global.__dbClient;
 
   const p = getPool();
   const client = drizzle(p, { schema });
 
-  if (process.env.NODE_ENV !== 'production') {
-    global.__dbClient = client;
-  }
+  dbInstance = client;
+  global.__dbClient = client;
   return client;
 }
 

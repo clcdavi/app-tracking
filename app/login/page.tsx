@@ -6,9 +6,10 @@ import { Target, Lock, Mail, User, ArrowRight, LoaderCircle } from 'lucide-react
 import { Toaster, toast } from 'sonner';
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get('return_to') || '/';
+  const rawReturnTo = searchParams.get('return_to') || '/';
+  // Strictly prevent Open Redirect: allow only local relative paths
+  const returnTo = rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : '/';
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');

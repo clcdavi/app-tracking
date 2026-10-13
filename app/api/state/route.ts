@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/db';
 import { tasks, dailyBudgets } from '@/db/schema';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql, and } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Task, Data } from '@/lib/planner';
 
@@ -156,17 +156,17 @@ export async function PUT(req: Request) {
     const { data } = payload.data;
 
     await db.transaction(async (tx) => {
-      // 1. Sync tasks
-      const currentTaskRows = await tx
-        .select({ id: tasks.id })
+      // 1. Fetch current tasks for change detection & deletion
+      const currentTasks = await tx
+        .select()
         .from(tasks)
         .where(eq(tasks.userId, user.id));
 
-      const existingTaskIds = new Set(currentTaskRows.map((r) => r.id));
+      const existingTaskMap = new Map(currentTasks.map((t) => [t.id, t]));
       const incomingTaskIds = new Set(data.tasks.map((t) => t.id));
 
       // Delete tasks that were removed
-      const toDelete = currentTaskRows
+      const toDelete = currentTasks
         .filter((r) => !incomingTaskIds.has(r.id))
         .map((r) => r.id);
 
@@ -174,34 +174,18 @@ export async function PUT(req: Request) {
         await tx.delete(tasks).where(inArray(tasks.id, toDelete));
       }
 
-      // Upsert tasks
+      // Separate into batch inserts and modified updates
+      const toInsert: Array<typeof tasks.$inferInsert> = [];
+      const updates: Array<{ id: string; set: Partial<typeof tasks.$inferInsert> }> = [];
+
       for (const t of data.tasks) {
         const createdAt = t.created ? new Date(t.created) : new Date();
         const updatedAt = t.updated ? new Date(t.updated) : new Date();
         const completedAt = t.completed ? new Date(t.completed) : null;
 
-        if (existingTaskIds.has(t.id)) {
-          await tx
-            .update(tasks)
-            .set({
-              title: t.title,
-              area: t.area,
-              project: t.project,
-              notes: t.notes,
-              priority: t.priority,
-              minutes: t.minutes,
-              status: t.status,
-              planDate: t.planDate,
-              deadline: t.deadline,
-              followUp: t.followUp,
-              top: t.top,
-              externalRef: t.externalRef ?? null,
-              updatedAt,
-              completedAt,
-            })
-            .where(eq(tasks.id, t.id));
-        } else {
-          await tx.insert(tasks).values({
+        const existing = existingTaskMap.get(t.id);
+        if (!existing) {
+          toInsert.push({
             id: t.id,
             userId: user.id,
             title: t.title,
@@ -220,21 +204,75 @@ export async function PUT(req: Request) {
             updatedAt,
             completedAt,
           });
+        } else {
+          // Change detection: only update if task properties actually differed
+          const hasChanged =
+            existing.title !== t.title ||
+            existing.area !== t.area ||
+            existing.project !== t.project ||
+            existing.notes !== t.notes ||
+            existing.priority !== t.priority ||
+            existing.minutes !== t.minutes ||
+            existing.status !== t.status ||
+            existing.planDate !== t.planDate ||
+            existing.deadline !== t.deadline ||
+            existing.followUp !== t.followUp ||
+            existing.top !== t.top ||
+            (existing.externalRef ?? null) !== (t.externalRef ?? null) ||
+            (existing.completedAt ? existing.completedAt.toISOString() : '') !== (t.completed || '');
+
+          if (hasChanged) {
+            updates.push({
+              id: t.id,
+              set: {
+                title: t.title,
+                area: t.area,
+                project: t.project,
+                notes: t.notes,
+                priority: t.priority,
+                minutes: t.minutes,
+                status: t.status,
+                planDate: t.planDate,
+                deadline: t.deadline,
+                followUp: t.followUp,
+                top: t.top,
+                externalRef: t.externalRef ?? null,
+                updatedAt,
+                completedAt,
+              },
+            });
+          }
         }
       }
 
-      // 2. Sync daily budgets
-      for (const [dateStr, minutes] of Object.entries(data.budgets)) {
+      // Batch insert new tasks in a single query
+      if (toInsert.length > 0) {
+        await tx.insert(tasks).values(toInsert);
+      }
+
+      // Only execute updates on rows that actually changed
+      for (const update of updates) {
+        await tx
+          .update(tasks)
+          .set(update.set)
+          .where(and(eq(tasks.id, update.id), eq(tasks.userId, user.id)));
+      }
+
+      // 2. Batch upsert daily budgets in a single query
+      const budgetEntries = Object.entries(data.budgets);
+      if (budgetEntries.length > 0) {
+        const budgetValues = budgetEntries.map(([dateStr, minutes]) => ({
+          userId: user.id,
+          date: dateStr,
+          minutes,
+        }));
+
         await tx
           .insert(dailyBudgets)
-          .values({
-            userId: user.id,
-            date: dateStr,
-            minutes,
-          })
+          .values(budgetValues)
           .onConflictDoUpdate({
             target: [dailyBudgets.userId, dailyBudgets.date],
-            set: { minutes },
+            set: { minutes: sql`excluded.minutes` },
           });
       }
     });

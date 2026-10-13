@@ -4,16 +4,43 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { hashPassword, createSession } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 const registerSchema = z.object({
-  email: z.string().trim().email('Ingresá un correo electrónico válido.'),
-  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
-  displayName: z.string().trim().min(1, 'Ingresá tu nombre.').max(120),
+  email: z
+    .string()
+    .trim()
+    .email('Ingresá un correo electrónico válido.')
+    .max(255, 'El correo no puede superar 255 caracteres.'),
+  password: z
+    .string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres.')
+    .max(72, 'La contraseña no puede superar 72 caracteres.'),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, 'Ingresá tu nombre.')
+    .max(120, 'El nombre no puede superar 120 caracteres.'),
 });
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const rateLimitKey = `register:${ip}`;
+
+  // Rate limiting: 5 registrations per 15 minutes (900 seconds)
+  const rate = checkRateLimit(rateLimitKey, 5, 900);
+  if (!rate.success) {
+    return NextResponse.json(
+      { error: `Demasiados intentos de registro. Por favor, esperá ${rate.resetSeconds} segundos.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rate.resetSeconds) },
+      }
+    );
+  }
+
   try {
     // Check if registration is allowed or if initial user setup
     const allowRegistration = process.env.ALLOW_REGISTRATION !== 'false';

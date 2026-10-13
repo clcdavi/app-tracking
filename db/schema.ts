@@ -17,6 +17,7 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index('idx_sessions_user_id').on(table.userId),
+  index('idx_sessions_expires_at').on(table.expiresAt),
 ]);
 
 export const tasks = pgTable('tasks', {

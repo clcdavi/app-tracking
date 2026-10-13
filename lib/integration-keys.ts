@@ -19,7 +19,18 @@ export function sameOrigin(req: Request): boolean {
   const origin = req.headers.get('origin');
   if (!origin) return true;
   try {
-    return origin === new URL(req.url).origin;
+    const originUrl = new URL(origin);
+    const reqUrl = new URL(req.url);
+
+    if (originUrl.origin === reqUrl.origin) return true;
+
+    // Robust check behind reverse proxies (Nginx, Traefik, Docker NAT, Cloudflare)
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    if (host && originUrl.host === host) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
