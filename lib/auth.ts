@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db } from '@/db';
@@ -36,10 +36,23 @@ export async function createSession(userId: string): Promise<string> {
     expiresAt,
   });
 
+  // Only set 'secure: true' if connection is HTTPS or COOKIE_SECURE=true.
+  // Over plain HTTP (e.g. accessing via http://IP:3000), browsers drop Secure cookies.
+  let isSecure = process.env.COOKIE_SECURE === 'true';
+  try {
+    const headerList = await headers();
+    const proto = headerList.get('x-forwarded-proto');
+    if (proto === 'https') {
+      isSecure = true;
+    }
+  } catch {
+    // fallback
+  }
+
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecure,
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_MAX_AGE_SECONDS,

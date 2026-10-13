@@ -42,8 +42,7 @@ function LoginForm() {
       }
 
       toast.success(mode === 'login' ? '¡Bienvenido de vuelta!' : 'Cuenta creada con éxito.');
-      router.push(returnTo);
-      router.refresh();
+      window.location.href = returnTo;
     } catch (err) {
       const msg = (err as Error).message;
       setError(msg);
