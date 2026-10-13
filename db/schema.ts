@@ -6,9 +6,15 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   displayName: varchar('display_name', { length: 120 }).notNull(),
+  telegramChatId: text('telegram_chat_id').unique(),
+  telegramConnectToken: varchar('telegram_connect_token', { length: 32 }),
+  telegramConnectExpiresAt: timestamp('telegram_connect_expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [
+  index('idx_users_telegram_chat_id').on(table.telegramChatId),
+  index('idx_users_telegram_connect_token').on(table.telegramConnectToken),
+]);
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),

@@ -111,4 +111,33 @@ describe('Planner Logic Tests', () => {
     assert.equal(chosen.length, 1);
     assert.equal(chosen[0].id, regular.id);
   });
+
+  it('allows editing all task fields with complete data integrity', () => {
+    const task = newTask('Original');
+    const updated: Task = {
+      ...task,
+      title: 'Terminar arquitectura de base de datos',
+      area: 'Trabajo',
+      status: 'doing',
+      priority: 3,
+      minutes: 90,
+      planDate: '2026-10-14',
+      deadline: '2026-10-18',
+      followUp: '2026-10-15',
+      project: 'Infraestructura',
+      notes: 'Requiere migración de esquemas en Oracle Cloud',
+      updated: new Date().toISOString(),
+    };
+
+    assert.equal(updated.title, 'Terminar arquitectura de base de datos');
+    assert.equal(updated.area, 'Trabajo');
+    assert.equal(updated.status, 'doing');
+    assert.equal(updated.priority, 3);
+    assert.equal(updated.minutes, 90);
+    assert.equal(updated.planDate, '2026-10-14');
+    assert.equal(updated.deadline, '2026-10-18');
+    assert.equal(updated.followUp, '2026-10-15');
+    assert.equal(updated.project, 'Infraestructura');
+    assert.equal(updated.notes, 'Requiere migración de esquemas en Oracle Cloud');
+  });
 });

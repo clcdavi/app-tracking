@@ -24,6 +24,7 @@ import {
   Heart,
   Folder,
   ChevronRight,
+  ChevronDown,
   Circle,
   Timer,
   Plug,
@@ -50,13 +51,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -112,25 +106,31 @@ function Choice({
   onChange,
   items,
   label,
+  id,
 }: {
   value: string;
   onChange: (s: string) => void;
-  items: string[][];
+  items: [string, string][] | string[][];
   label: string;
+  id?: string;
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={label} className="select-control">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
+    <div className="select-wrapper">
+      <select
+        id={id}
+        aria-label={label}
+        className="select-control"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
         {items.map(([v, l]) => (
-          <SelectItem key={v} value={v}>
+          <option key={v} value={v}>
             {l}
-          </SelectItem>
+          </option>
         ))}
-      </SelectContent>
-    </Select>
+      </select>
+      <ChevronDown className="select-chevron" size={16} />
+    </div>
   );
 }
 
@@ -1146,30 +1146,33 @@ export default function Workspace() {
                 }
               }}
             >
-              <label className="field">
-                ¿Qué necesitás hacer?
+              <div className="field">
+                <label htmlFor="task-title">¿Qué necesitás hacer?</label>
                 <input
+                  id="task-title"
                   value={edit.title}
                   required
                   maxLength={240}
                   placeholder="Ej.: terminar el ejercicio de programación"
                   onChange={(e) => setEdit({ ...edit, title: e.target.value })}
                 />
-              </label>
+              </div>
 
               <div className="form-grid">
-                <label className="field">
-                  Área
+                <div className="field">
+                  <label htmlFor="task-area">Área</label>
                   <Choice
+                    id="task-area"
                     label="Área"
                     value={edit.area}
                     onChange={(area) => setEdit({ ...edit, area })}
                     items={areas.map((a) => [a, a])}
                   />
-                </label>
-                <label className="field">
-                  Estado
+                </div>
+                <div className="field">
+                  <label htmlFor="task-status">Estado</label>
                   <Choice
+                    id="task-status"
                     label="Estado"
                     value={edit.status}
                     onChange={(v) =>
@@ -1177,37 +1180,46 @@ export default function Workspace() {
                         ...edit,
                         status: v as Task['status'],
                         top: v === 'waiting' ? false : edit.top,
-                        completed: v === 'done' ? new Date().toISOString() : '',
+                        completed: v === 'done' ? (edit.completed || new Date().toISOString()) : '',
                       })
                     }
                     items={Object.entries(states)}
                   />
-                </label>
-                <label className="field">
-                  Prioridad
+                </div>
+                <div className="field">
+                  <label htmlFor="task-priority">Prioridad</label>
                   <Choice
+                    id="task-priority"
                     label="Prioridad"
                     value={String(edit.priority)}
                     onChange={(v) => setEdit({ ...edit, priority: Number(v) })}
                     items={['1', '2', '3'].map((v) => [v, priorityLabels[Number(v)]])}
                   />
-                </label>
-                <label className="field">
-                  Duración estimada (min)
+                </div>
+                <div className="field">
+                  <label htmlFor="task-minutes">Duración estimada (min)</label>
                   <input
+                    id="task-minutes"
                     type="number"
                     min={5}
                     max={1440}
                     required
-                    value={edit.minutes}
-                    onChange={(e) => setEdit({ ...edit, minutes: Number(e.target.value) })}
+                    value={edit.minutes ?? 30}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setEdit({
+                        ...edit,
+                        minutes: isNaN(val) ? 30 : Math.min(1440, Math.max(1, val)),
+                      });
+                    }}
                   />
-                </label>
-                <label className="field">
-                  Día para hacerlo
+                </div>
+                <div className="field">
+                  <label htmlFor="task-plan-date">Día para hacerlo</label>
                   <input
+                    id="task-plan-date"
                     type="date"
-                    value={edit.planDate}
+                    value={edit.planDate ?? ''}
                     onChange={(e) =>
                       setEdit({
                         ...edit,
@@ -1218,44 +1230,48 @@ export default function Workspace() {
                       })
                     }
                   />
-                </label>
-                <label className="field">
-                  Fecha límite real
+                </div>
+                <div className="field">
+                  <label htmlFor="task-deadline">Fecha límite real</label>
                   <input
+                    id="task-deadline"
                     type="date"
-                    value={edit.deadline}
+                    value={edit.deadline ?? ''}
                     onChange={(e) => setEdit({ ...edit, deadline: e.target.value })}
                   />
-                </label>
-                <label className="field">
-                  Próximo seguimiento
+                </div>
+                <div className="field">
+                  <label htmlFor="task-follow-up">Próximo seguimiento</label>
                   <input
+                    id="task-follow-up"
                     type="date"
-                    value={edit.followUp}
+                    value={edit.followUp ?? ''}
                     onChange={(e) => setEdit({ ...edit, followUp: e.target.value })}
                   />
-                </label>
-                <label className="field">
-                  Proyecto (opcional)
+                </div>
+                <div className="field">
+                  <label htmlFor="task-project">Proyecto (opcional)</label>
                   <input
+                    id="task-project"
                     maxLength={120}
-                    value={edit.project}
+                    value={edit.project ?? ''}
                     placeholder="Ej.: DevOps"
                     onChange={(e) => setEdit({ ...edit, project: e.target.value })}
                   />
-                </label>
+                </div>
               </div>
 
-              <label className="field">
-                Notas / próximo paso
+              <div className="field">
+                <label htmlFor="task-notes">Notas / próximo paso</label>
                 <textarea
+                  id="task-notes"
                   rows={3}
                   maxLength={10000}
-                  value={edit.notes}
+                  value={edit.notes ?? ''}
                   onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
                   placeholder="Qué falta, de quién depende o cómo retomar…"
                 />
-              </label>
+              </div>
 
               {edit.top && (
                 <p className="form-hint">

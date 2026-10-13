@@ -15,6 +15,11 @@ export async function runMigrations() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT UNIQUE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_connect_token VARCHAR(32);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_connect_expires_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_users_telegram_chat_id ON users(telegram_chat_id);
+      CREATE INDEX IF NOT EXISTS idx_users_telegram_connect_token ON users(telegram_connect_token);
     `);
 
     // 2. Sessions table
