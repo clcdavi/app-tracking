@@ -9,6 +9,7 @@ import {
   score,
   suggestions,
   newTask,
+  generateUUID,
   type Task,
 } from '../lib/planner';
 
@@ -25,6 +26,11 @@ describe('Planner Logic Tests', () => {
     assert.ok(label.length > 0);
   });
 
+  it('generateUUID produces valid RFC4122 v4 UUID format', () => {
+    const id = generateUUID();
+    assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  });
+
   it('newTask initializes with standard sensible defaults', () => {
     const task = newTask('Terminar informe');
     assert.equal(task.title, 'Terminar informe');
@@ -34,6 +40,7 @@ describe('Planner Logic Tests', () => {
     assert.equal(task.minutes, 30);
     assert.equal(task.top, false);
     assert.ok(task.id);
+    assert.match(task.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 
   it('attention flags overdue deadlines, plans, and follow-ups', () => {
