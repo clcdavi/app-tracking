@@ -108,7 +108,7 @@ export default function IntegrationsPage() {
     </header>
 
     {error && <div className="integration-error" role="alert">{error}<button onClick={() => void loadKeys()}>Reintentar</button></div>}
-    {signedOut && <div className="integration-card"><h2>Iniciá sesión</h2><p>Las conexiones se administran desde tu espacio privado.</p><a className="primary-btn" href="/signin-with-chatgpt?return_to=%2Fintegrations" target="_top">Iniciar sesión con ChatGPT</a></div>}
+    {signedOut && <div className="integration-card"><h2>Iniciá sesión</h2><p>Las conexiones se administran desde tu espacio privado.</p><Link className="primary-btn" href="/login?return_to=%2Fintegrations">Iniciar sesión</Link></div>}
 
     {!signedOut && <>
       <section className="integration-card">

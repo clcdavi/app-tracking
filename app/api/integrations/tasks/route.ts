@@ -1,86 +1,164 @@
-import { database } from '@/db/raw';
-import { apiReply, ensureIntegrationKeyTable, hashIntegrationToken, readLimitedBody } from '@/lib/integration-keys';
-import { Task, Data } from '@/lib/planner';
+import { db } from '@/db';
+import { integrationKeys, tasks } from '@/db/schema';
+import { eq, and, isNull, sql } from 'drizzle-orm';
+import {
+  apiReply,
+  hashIntegrationToken,
+  readLimitedBody,
+} from '@/lib/integration-keys';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
-const date = z.string().refine(value => value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value), 'Usá una fecha válida con formato AAAA-MM-DD.');
+
+const dateSchema = z.string().refine(
+  (value) =>
+    value === '' ||
+    (/^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      !Number.isNaN(Date.parse(value)) &&
+      new Date(value).toISOString().slice(0, 10) === value),
+  'Usá una fecha válida con formato AAAA-MM-DD.'
+);
+
 const incomingTask = z.object({
   externalId: z.string().trim().min(1).max(180).optional(),
-  title: z.string().trim().min(1).max(240),
+  title: z.string().trim().min(1, 'El título es obligatorio.').max(240),
   area: z.enum(['Personal', 'Trabajo', 'Estudio', 'Iglesia', 'Proyectos']).optional(),
   project: z.string().trim().max(120).optional(),
   notes: z.string().max(10000).optional(),
   priority: z.number().int().min(1).max(3).optional(),
   minutes: z.number().int().min(5).max(1440).optional(),
   status: z.enum(['inbox', 'todo', 'doing', 'waiting']).optional(),
-  planDate: date.optional(),
-  deadline: date.optional(),
-  followUp: date.optional(),
+  planDate: dateSchema.optional(),
+  deadline: dateSchema.optional(),
+  followUp: dateSchema.optional(),
 });
-const payloadSchema = z.object({ tasks: z.array(incomingTask).min(1).max(50) });
-const reply = (data: unknown, status = 200, headers?: HeadersInit) => apiReply(data, status, headers);
+
+const payloadSchema = z.object({
+  tasks: z.array(incomingTask).min(1, 'Incluí al menos una tarea.').max(50, 'Máximo 50 tareas por lote.'),
+});
+
+const reply = (data: unknown, status = 200, headers?: HeadersInit) =>
+  apiReply(data, status, headers);
 
 export async function POST(req: Request) {
   const authorization = req.headers.get('authorization') ?? '';
   const match = /^Bearer (enf_live_[A-Za-z0-9_-]{40,})$/.exec(authorization);
-  if (!match) return reply({ error: 'Falta una clave válida en Authorization: Bearer.' }, 401, { 'WWW-Authenticate': 'Bearer' });
+  if (!match) {
+    return reply(
+      { error: 'Falta una clave válida en Authorization: Bearer.' },
+      401,
+      { 'WWW-Authenticate': 'Bearer' }
+    );
+  }
 
   try {
     const raw = await readLimitedBody(req, 100_000);
-    if (raw === null) return reply({ error: 'El lote supera el máximo de 100 KB.' }, 413);
+    if (raw === null) {
+      return reply({ error: 'El lote supera el máximo de 100 KB.' }, 413);
+    }
+
     let body: unknown;
-    try { body = JSON.parse(raw); } catch { return reply({ error: 'El cuerpo debe ser JSON válido.' }, 400); }
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return reply({ error: 'El cuerpo debe ser JSON válido.' }, 400);
+    }
+
     const parsed = payloadSchema.safeParse(body);
-    if (!parsed.success) return reply({ error: parsed.error.issues[0]?.message ?? 'Revisá las tareas enviadas.' }, 400);
-    const externalIds = parsed.data.tasks.flatMap(task => task.externalId ? [task.externalId] : []);
-    if (new Set(externalIds).size !== externalIds.length) return reply({ error: 'No repitas externalId dentro del mismo lote.' }, 400);
+    if (!parsed.success) {
+      return reply(
+        { error: parsed.error.issues[0]?.message ?? 'Revisá las tareas enviadas.' },
+        400
+      );
+    }
 
-    const db = database();
-    await ensureIntegrationKeyTable(db);
-    const key = await db.prepare('SELECT id, owner FROM integration_keys WHERE token_hash = ? AND revoked_at IS NULL').bind(await hashIntegrationToken(match[1])).first<{id:string;owner:string}>();
-    if (!key) return reply({ error: 'La clave no existe o fue revocada.' }, 401, { 'WWW-Authenticate': 'Bearer' });
-    await db.prepare('UPDATE integration_keys SET last_used_at = ? WHERE id = ?').bind(new Date().toISOString(), key.id).run();
-    await db.prepare('INSERT OR IGNORE INTO workspaces (owner, data, version) VALUES (?, ?, 0)').bind(key.owner, JSON.stringify({ tasks: [], budgets: {} })).run();
+    const externalIds = parsed.data.tasks.flatMap((t) => (t.externalId ? [t.externalId] : []));
+    if (new Set(externalIds).size !== externalIds.length) {
+      return reply({ error: 'No repitas externalId dentro del mismo lote.' }, 400);
+    }
 
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const row = await db.prepare('SELECT data, version FROM workspaces WHERE owner = ?').bind(key.owner).first<{data:string;version:number}>();
-      if (!row) return reply({ error: 'No se pudo abrir el espacio de tareas.' }, 503);
-      const current = JSON.parse(row.data) as Data;
-      const tasks = Array.isArray(current.tasks) ? current.tasks : [];
-      const now = new Date().toISOString();
-      let created = 0;
-      let updated = 0;
+    const tokenHash = await hashIntegrationToken(match[1]);
+    const keyRecord = await db
+      .select({
+        id: integrationKeys.id,
+        userId: integrationKeys.userId,
+      })
+      .from(integrationKeys)
+      .where(and(eq(integrationKeys.tokenHash, tokenHash), isNull(integrationKeys.revokedAt)))
+      .limit(1);
+
+    if (!keyRecord.length) {
+      return reply(
+        { error: 'La clave no existe o fue revocada.' },
+        401,
+        { 'WWW-Authenticate': 'Bearer' }
+      );
+    }
+
+    const key = keyRecord[0];
+
+    // Update last used timestamp
+    await db
+      .update(integrationKeys)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(integrationKeys.id, key.id));
+
+    // Check user task limit
+    const totalCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tasks)
+      .where(eq(tasks.userId, key.userId));
+
+    if (Number(totalCount[0]?.count || 0) + parsed.data.tasks.length > 2000) {
+      return reply({ error: 'El espacio admite hasta 2000 tareas en total.' }, 413);
+    }
+
+    let created = 0;
+    let updated = 0;
+
+    await db.transaction(async (tx) => {
+      const now = new Date();
 
       for (const input of parsed.data.tasks) {
-        const externalRef = input.externalId ? `${key.id}:${input.externalId}` : undefined;
-        const previous = externalRef ? tasks.find(task => task.externalRef === externalRef) : undefined;
-        if (previous) {
-          const planDate = input.planDate ?? previous.planDate;
-          const status = previous.status === 'done' ? 'done' : (input.status ?? previous.status);
-          const changed = {
-            ...previous,
-            title: input.title,
-            area: input.area ?? previous.area,
-            project: input.project ?? previous.project,
-            notes: input.notes ?? previous.notes,
-            priority: input.priority ?? previous.priority,
-            minutes: input.minutes ?? previous.minutes,
-            status,
-            planDate,
-            deadline: input.deadline ?? previous.deadline,
-            followUp: input.followUp ?? previous.followUp,
-            top: status === 'waiting' || planDate !== previous.planDate ? false : previous.top,
-            completed: status === 'done' ? previous.completed : '',
-            updated: now,
-          };
-          tasks[tasks.indexOf(previous)] = changed;
-          updated++;
-          continue;
+        const externalRef = input.externalId ? `${key.id}:${input.externalId}` : null;
+
+        if (externalRef) {
+          const [existing] = await tx
+            .select()
+            .from(tasks)
+            .where(and(eq(tasks.userId, key.userId), eq(tasks.externalRef, externalRef)))
+            .limit(1);
+
+          if (existing) {
+            const planDate = input.planDate ?? existing.planDate;
+            const status = existing.status === 'done' ? 'done' : (input.status ?? existing.status);
+
+            await tx
+              .update(tasks)
+              .set({
+                title: input.title,
+                area: input.area ?? existing.area,
+                project: input.project ?? existing.project,
+                notes: input.notes ?? existing.notes,
+                priority: input.priority ?? existing.priority,
+                minutes: input.minutes ?? existing.minutes,
+                status,
+                planDate,
+                deadline: input.deadline ?? existing.deadline,
+                followUp: input.followUp ?? existing.followUp,
+                top: status === 'waiting' || planDate !== existing.planDate ? false : existing.top,
+                updatedAt: now,
+              })
+              .where(eq(tasks.id, existing.id));
+
+            updated++;
+            continue;
+          }
         }
 
-        const task: Task = {
-          id: crypto.randomUUID(),
+        // Insert new task
+        await tx.insert(tasks).values({
+          userId: key.userId,
           title: input.title,
           area: input.area ?? 'Personal',
           project: input.project ?? '',
@@ -92,25 +170,18 @@ export async function POST(req: Request) {
           deadline: input.deadline ?? '',
           followUp: input.followUp ?? '',
           top: false,
-          created: now,
-          updated: now,
-          completed: '',
-          ...(externalRef ? { externalRef } : {}),
-        };
-        tasks.unshift(task);
+          externalRef,
+          createdAt: now,
+          updatedAt: now,
+        });
+
         created++;
       }
+    });
 
-      if (tasks.length > 2000) return reply({ error: 'El espacio admite hasta 2000 tareas.' }, 413);
-      const next: Data = { tasks, budgets: current.budgets ?? {} };
-      const serialized = JSON.stringify(next);
-      if (new TextEncoder().encode(serialized).length > 2_000_000) return reply({ error: 'El espacio superaría el límite de 2 MB.' }, 413);
-      const saved = await db.prepare('UPDATE workspaces SET data = ?, version = version + 1 WHERE owner = ? AND version = ?').bind(serialized, key.owner, row.version).run();
-      if (saved.meta.changes) return reply({ created, updated, version: row.version + 1 });
-    }
-    return reply({ error: 'El espacio cambió al mismo tiempo. Reintentá la solicitud; externalId evita crear duplicados.' }, 409);
+    return reply({ created, updated });
   } catch (error) {
-    console.error('Import integration tasks', error);
+    console.error('Import integration tasks error:', error);
     return reply({ error: 'No se pudieron importar las tareas.' }, 503);
   }
 }

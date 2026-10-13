@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: enfoco_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-enfoco}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cambiar_password_seguro}
+      POSTGRES_DB: ${DB_NAME:-enfoco_db}
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: enfoco_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-enfoco}:${DB_PASSWORD:-cambiar_password_seguro}@db:5432/${DB_NAME:-enfoco_db}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      TZ: America/Argentina/Buenos_Aires
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend_net
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  backend_net:
+    driver: bridge

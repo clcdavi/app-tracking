@@ -1,11 +1,258 @@
-import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { database } from '@/db/raw';
+import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/db';
+import { tasks, dailyBudgets } from '@/db/schema';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-export const dynamic='force-dynamic';
-const date=z.string().refine(x=>x===''||(/^\d{4}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x));
-const stamp=z.string().refine(x=>x===''||!Number.isNaN(Date.parse(x)));
-const task=z.object({id:z.string().uuid(),title:z.string().trim().min(1).max(240),area:z.enum(['Personal','Trabajo','Estudio','Iglesia','Proyectos']),project:z.string().max(120),notes:z.string().max(10000),priority:z.number().int().min(1).max(3),minutes:z.number().int().min(5).max(1440),status:z.enum(['inbox','todo','doing','waiting','done']),planDate:date,deadline:date,followUp:date,top:z.boolean(),created:stamp,updated:stamp,completed:stamp,externalRef:z.string().max(220).optional()});
-const data=z.object({tasks:z.array(task).max(2000),budgets:z.record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/),z.number().int().min(0).max(1440))}).superRefine((d,c)=>{const ids=new Set<string>();const tops:Record<string,number>={};for(const t of d.tasks){if(ids.has(t.id))c.addIssue({code:'custom',message:'ID repetido'});ids.add(t.id);if(t.top){if(!t.planDate||t.status==='waiting')c.addIssue({code:'custom',message:'Top 3 requiere una fecha y una tarea disponible'});tops[t.planDate]=(tops[t.planDate]||0)+1;}}if(Object.values(tops).some(n=>n>3))c.addIssue({code:'custom',message:'Elegí un máximo de 3 prioridades por día'});});
-const reply=(x:unknown,status=200)=>Response.json(x,{status,headers:{'Cache-Control':'no-store'}});
-export async function GET(){const u=await getChatGPTUser();if(!u)return reply({error:'Iniciá sesión para ver tus pendientes.'},401);try{const row=await database().prepare('SELECT data,version FROM workspaces WHERE owner=?').bind(u.userId).first<{data:string,version:number}>();return reply(row?{data:JSON.parse(row.data),version:row.version}:{data:{tasks:[],budgets:{}},version:0});}catch(e){console.error('Read state',e);return reply({error:'No pudimos cargar tus pendientes. Intentá nuevamente.'},503);}}
-export async function PUT(req:Request){const u=await getChatGPTUser();if(!u)return reply({error:'Iniciá sesión para guardar.'},401);const origin=req.headers.get('origin');if(origin&&origin!==new URL(req.url).origin)return reply({error:'Origen no permitido.'},403);try{const text=await req.text();if(text.length>2000000)return reply({error:'El espacio superó el tamaño permitido.'},413);let value;try{value=JSON.parse(text)}catch{return reply({error:'Formato inválido.'},400)}const parsed=z.object({data,version:z.number().int().min(0)}).safeParse(value);if(!parsed.success)return reply({error:parsed.error.issues[0]?.message||'Revisá los datos de la tarea.'},400);const db=database();const input=parsed.data;await db.prepare('INSERT OR IGNORE INTO workspaces (owner,data,version) VALUES (?,?,0)').bind(u.userId,JSON.stringify({tasks:[],budgets:{}})).run();const result=await db.prepare('UPDATE workspaces SET data=?,version=version+1 WHERE owner=? AND version=?').bind(JSON.stringify(input.data),u.userId,input.version).run();if(!result.meta.changes)return reply({error:'Hay cambios desde otro dispositivo. Actualizá la vista antes de volver a guardar.'},409);return reply({data:input.data,version:input.version+1});}catch(e){console.error('Save state',e);return reply({error:'No se guardaron los cambios. Tu edición sigue abierta; volvé a intentar.'},503);}}
+import type { Task, Data } from '@/lib/planner';
+
+export const dynamic = 'force-dynamic';
+
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const dateSchema = z.string().refine(
+  (x) => x === '' || (dateRegex.test(x) && !Number.isNaN(Date.parse(x))),
+  'Formato de fecha inválido (AAAA-MM-DD)'
+);
+
+const stampSchema = z.string().refine(
+  (x) => x === '' || !Number.isNaN(Date.parse(x)),
+  'Fecha y hora inválida'
+);
+
+const taskSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1, 'El título es obligatorio').max(240),
+  area: z.enum(['Personal', 'Trabajo', 'Estudio', 'Iglesia', 'Proyectos']),
+  project: z.string().max(120).default(''),
+  notes: z.string().max(10000).default(''),
+  priority: z.number().int().min(1).max(3).default(2),
+  minutes: z.number().int().min(5).max(1440).default(30),
+  status: z.enum(['inbox', 'todo', 'doing', 'waiting', 'done']).default('inbox'),
+  planDate: dateSchema.default(''),
+  deadline: dateSchema.default(''),
+  followUp: dateSchema.default(''),
+  top: z.boolean().default(false),
+  created: stampSchema,
+  updated: stampSchema,
+  completed: stampSchema.default(''),
+  externalRef: z.string().max(255).optional(),
+});
+
+const dataSchema = z
+  .object({
+    tasks: z.array(taskSchema).max(2000, 'Límite de 2000 tareas superado'),
+    budgets: z.record(z.string().regex(dateRegex), z.number().int().min(0).max(1440)),
+  })
+  .superRefine((d, ctx) => {
+    const ids = new Set<string>();
+    const topsByDate: Record<string, number> = {};
+
+    for (const t of d.tasks) {
+      if (ids.has(t.id)) {
+        ctx.addIssue({ code: 'custom', message: 'Hay IDs de tareas duplicados' });
+      }
+      ids.add(t.id);
+
+      if (t.top) {
+        if (!t.planDate || t.status === 'waiting') {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Una prioridad Top 3 requiere fecha de plan y no puede estar en espera',
+          });
+        }
+        topsByDate[t.planDate] = (topsByDate[t.planDate] || 0) + 1;
+      }
+    }
+
+    for (const [dateKey, count] of Object.entries(topsByDate)) {
+      if (count > 3) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `El día ${dateKey} tiene más de 3 prioridades seleccionadas`,
+        });
+      }
+    }
+  });
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Iniciá sesión para ver tus pendientes.' }, { status: 401 });
+  }
+
+  try {
+    const [userTasks, userBudgets] = await Promise.all([
+      db.select().from(tasks).where(eq(tasks.userId, user.id)),
+      db.select().from(dailyBudgets).where(eq(dailyBudgets.userId, user.id)),
+    ]);
+
+    const formattedTasks: Task[] = userTasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      area: t.area,
+      project: t.project,
+      notes: t.notes,
+      priority: t.priority,
+      minutes: t.minutes,
+      status: t.status as Task['status'],
+      planDate: t.planDate,
+      deadline: t.deadline,
+      followUp: t.followUp,
+      top: t.top,
+      created: t.createdAt.toISOString(),
+      updated: t.updatedAt.toISOString(),
+      completed: t.completedAt ? t.completedAt.toISOString() : '',
+      ...(t.externalRef ? { externalRef: t.externalRef } : {}),
+    }));
+
+    const budgetsMap: Record<string, number> = {};
+    for (const b of userBudgets) {
+      budgetsMap[b.date] = b.minutes;
+    }
+
+    return NextResponse.json(
+      {
+        data: {
+          tasks: formattedTasks,
+          budgets: budgetsMap,
+        },
+        version: 1,
+      },
+      {
+        headers: { 'Cache-Control': 'no-store' },
+      }
+    );
+  } catch (error) {
+    console.error('Error fetching state:', error);
+    return NextResponse.json(
+      { error: 'No pudimos cargar tus pendientes. Intentá nuevamente.' },
+      { status: 503 }
+    );
+  }
+}
+
+export async function PUT(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Iniciá sesión para guardar.' }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const payload = z
+      .object({
+        data: dataSchema,
+        version: z.number().int().optional(),
+      })
+      .safeParse(body);
+
+    if (!payload.success) {
+      return NextResponse.json(
+        { error: payload.error.issues[0]?.message || 'Datos inválidos.' },
+        { status: 400 }
+      );
+    }
+
+    const { data } = payload.data;
+
+    await db.transaction(async (tx) => {
+      // 1. Sync tasks
+      const currentTaskRows = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(eq(tasks.userId, user.id));
+
+      const existingTaskIds = new Set(currentTaskRows.map((r) => r.id));
+      const incomingTaskIds = new Set(data.tasks.map((t) => t.id));
+
+      // Delete tasks that were removed
+      const toDelete = currentTaskRows
+        .filter((r) => !incomingTaskIds.has(r.id))
+        .map((r) => r.id);
+
+      if (toDelete.length > 0) {
+        await tx.delete(tasks).where(inArray(tasks.id, toDelete));
+      }
+
+      // Upsert tasks
+      for (const t of data.tasks) {
+        const createdAt = t.created ? new Date(t.created) : new Date();
+        const updatedAt = t.updated ? new Date(t.updated) : new Date();
+        const completedAt = t.completed ? new Date(t.completed) : null;
+
+        if (existingTaskIds.has(t.id)) {
+          await tx
+            .update(tasks)
+            .set({
+              title: t.title,
+              area: t.area,
+              project: t.project,
+              notes: t.notes,
+              priority: t.priority,
+              minutes: t.minutes,
+              status: t.status,
+              planDate: t.planDate,
+              deadline: t.deadline,
+              followUp: t.followUp,
+              top: t.top,
+              externalRef: t.externalRef ?? null,
+              updatedAt,
+              completedAt,
+            })
+            .where(eq(tasks.id, t.id));
+        } else {
+          await tx.insert(tasks).values({
+            id: t.id,
+            userId: user.id,
+            title: t.title,
+            area: t.area,
+            project: t.project,
+            notes: t.notes,
+            priority: t.priority,
+            minutes: t.minutes,
+            status: t.status,
+            planDate: t.planDate,
+            deadline: t.deadline,
+            followUp: t.followUp,
+            top: t.top,
+            externalRef: t.externalRef ?? null,
+            createdAt,
+            updatedAt,
+            completedAt,
+          });
+        }
+      }
+
+      // 2. Sync daily budgets
+      for (const [dateStr, minutes] of Object.entries(data.budgets)) {
+        await tx
+          .insert(dailyBudgets)
+          .values({
+            userId: user.id,
+            date: dateStr,
+            minutes,
+          })
+          .onConflictDoUpdate({
+            target: [dailyBudgets.userId, dailyBudgets.date],
+            set: { minutes },
+          });
+      }
+    });
+
+    return NextResponse.json(
+      {
+        data,
+        version: (payload.data.version ?? 0) + 1,
+      },
+      {
+        headers: { 'Cache-Control': 'no-store' },
+      }
+    );
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return NextResponse.json(
+      { error: 'No se pudieron guardar los cambios. Intentá nuevamente.' },
+      { status: 500 }
+    );
+  }
+}
