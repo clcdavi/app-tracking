@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, useMemo, type FormEvent } from 'react';
 import Link from 'next/link';
 import {
   Sun,
@@ -98,6 +98,12 @@ const navs = [
 
 const areaIcons = [Heart, Briefcase, BookOpen, Heart, Folder];
 const priorityLabels = ['', 'Baja', 'Media', 'Alta'];
+
+const arDateTimeFormatter = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'America/Argentina/Buenos_Aires',
+});
 
 type UserInfo = { displayName: string; email: string };
 
@@ -268,7 +274,10 @@ export default function Workspace() {
   const [budgetInput, setBudgetInput] = useState('120');
   const [user, setUser] = useState<UserInfo | null>(null);
 
-  const ref = useRef({ data, version, busy: false });
+  const isSyncingRef = useRef(false);
+  const pendingSyncRef = useRef<Data | null>(null);
+
+  const ref = useRef({ data, version });
   ref.current.data = data;
   ref.current.version = version;
 
@@ -334,33 +343,50 @@ export default function Workspace() {
   }
 
   async function persist(next: Data) {
-    if (ref.current.busy) throw new Error('Esperá a que termine de guardar.');
-    ref.current.busy = true;
-    setBusy(true);
+    // Optimistic update: render changes instantly (0ms latency)!
+    setData(next);
+    ref.current.data = next;
+
+    // Queue sync in background
+    pendingSyncRef.current = next;
+    if (isSyncingRef.current) {
+      return;
+    }
+
+    isSyncingRef.current = true;
     try {
-      const res = await fetch('/api/state', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: next, version: ref.current.version }),
-      });
-      const result = (await res.json()) as {
-        data: Data;
-        version: number;
-        error: string;
-      };
-      if (!res.ok) {
-        setError(result.error);
-        throw new Error(result.error);
+      while (pendingSyncRef.current) {
+        const toSync = pendingSyncRef.current;
+        pendingSyncRef.current = null;
+
+        const res = await fetch('/api/state', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: toSync, version: ref.current.version }),
+        });
+
+        const result = (await res.json()) as {
+          data: Data;
+          version: number;
+          error?: string;
+        };
+
+        if (!res.ok) {
+          setError(result.error || 'Error al guardar.');
+          toast.error(result.error || 'No se pudieron sincronizar los cambios.');
+          void reload();
+          return;
+        }
+
+        ref.current.version = result.version;
+        setVersion(result.version);
+        setError('');
       }
-      ref.current.data = result.data;
-      ref.current.version = result.version;
-      setData(result.data);
-      setVersion(result.version);
-      setError('');
-      return result;
+    } catch (e) {
+      console.error('Sync error:', e);
+      toast.error('Problema de conexión al sincronizar.');
     } finally {
-      ref.current.busy = false;
-      setBusy(false);
+      isSyncingRef.current = false;
     }
   }
 
@@ -435,64 +461,90 @@ export default function Workspace() {
     return () => lifecycle.abort();
   }, []);
 
-  const dayTasks = tasks.filter((t) => t.planDate === date && t.status !== 'waiting');
-  const top = tasks.filter((t) => t.planDate === date && t.top);
-  const plannedMinutes = dayTasks.reduce((s, t) => s + t.minutes, 0);
-  const doneMinutes = dayTasks
-    .filter((t) => t.status === 'done')
-    .reduce((s, t) => s + t.minutes, 0);
-  const doneToday = tasks.filter(
-    (t) =>
-      t.status === 'done' &&
-      t.completed &&
-      new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Argentina/Buenos_Aires',
-      }).format(new Date(t.completed)) === date
-  ).length;
+  const dayTasks = useMemo(
+    () => tasks.filter((t) => t.planDate === date && t.status !== 'waiting'),
+    [tasks, date]
+  );
+  const top = useMemo(
+    () => tasks.filter((t) => t.planDate === date && t.top),
+    [tasks, date]
+  );
+  const plannedMinutes = useMemo(
+    () => dayTasks.reduce((s, t) => s + t.minutes, 0),
+    [dayTasks]
+  );
+  const doneMinutes = useMemo(
+    () => dayTasks.filter((t) => t.status === 'done').reduce((s, t) => s + t.minutes, 0),
+    [dayTasks]
+  );
+  const doneToday = useMemo(
+    () =>
+      tasks.filter(
+        (t) =>
+          t.status === 'done' &&
+          t.completed &&
+          t.completed.slice(0, 10) === date
+      ).length,
+    [tasks, date]
+  );
 
-  const candidates = tasks
-    .filter(
-      (t) =>
-        t.status !== 'done' &&
-        t.status !== 'waiting' &&
-        !(t.top && t.planDate === date) &&
-        (!t.planDate || t.planDate <= date)
-    )
-    .sort((a, b) => score(b, date) - score(a, date));
+  const candidates = useMemo(
+    () =>
+      tasks
+        .filter(
+          (t) =>
+            t.status !== 'done' &&
+            t.status !== 'waiting' &&
+            !(t.top && t.planDate === date) &&
+            (!t.planDate || t.planDate <= date)
+        )
+        .sort((a, b) => score(b, date) - score(a, date)),
+    [tasks, date]
+  );
 
-  const recommended = suggestions(tasks, date, budget);
-  const needsAttention = tasks.filter((t) => attention(t, date));
+  const recommended = useMemo(
+    () => suggestions(tasks, date, budget),
+    [tasks, date, budget]
+  );
+  const needsAttention = useMemo(
+    () => tasks.filter((t) => attention(t, date)),
+    [tasks, date]
+  );
 
-  const filtered = tasks
-    .filter((t) => {
-      let match = false;
-      if (view === 'today')
-        match = t.planDate === date && t.status !== 'done' && t.status !== 'waiting';
-      else if (view === 'inbox') match = t.status === 'inbox';
-      else if (view === 'week')
-        match =
-          t.status !== 'done' &&
-          ((t.planDate >= date && t.planDate <= addDays(date, 6)) ||
-            (t.deadline >= date && t.deadline <= addDays(date, 6)));
-      else if (view === 'attention') match = attention(t, date);
-      else if (view === 'waiting') match = t.status === 'waiting';
-      else if (view === 'done') match = t.status === 'done';
-      else if (view === 'all') match = t.status !== 'done';
-      else match = t.area === view && t.status !== 'done';
+  const filtered = useMemo(
+    () =>
+      tasks
+        .filter((t) => {
+          let match = false;
+          if (view === 'today')
+            match = t.planDate === date && t.status !== 'done' && t.status !== 'waiting';
+          else if (view === 'inbox') match = t.status === 'inbox';
+          else if (view === 'week')
+            match =
+              t.status !== 'done' &&
+              ((t.planDate >= date && t.planDate <= addDays(date, 6)) ||
+                (t.deadline >= date && t.deadline <= addDays(date, 6)));
+          else if (view === 'attention') match = attention(t, date);
+          else if (view === 'waiting') match = t.status === 'waiting';
+          else if (view === 'done') match = t.status === 'done';
+          else if (view === 'all') match = t.status !== 'done';
+          else match = t.area === view && t.status !== 'done';
 
-      return (
-        match &&
-        (!query ||
-          [t.title, t.project, t.notes].some((s) =>
-            s.toLowerCase().includes(query.toLowerCase())
-          ))
-      );
-    })
-    .sort((a, b) =>
-      view === 'done'
-        ? b.completed.localeCompare(a.completed)
-        : score(b, date) - score(a, date)
-    );
+          return (
+            match &&
+            (!query ||
+              [t.title, t.project, t.notes].some((s) =>
+                s.toLowerCase().includes(query.toLowerCase())
+              ))
+          );
+        })
+        .sort((a, b) =>
+          view === 'done'
+            ? b.completed.localeCompare(a.completed)
+            : score(b, date) - score(a, date)
+        ),
+    [tasks, view, date, query]
+  );
 
   const pageTitle =
     view === 'today'
@@ -580,7 +632,6 @@ export default function Workspace() {
           className="task-check"
           aria-label={t.status === 'done' ? `Reabrir ${t.title}` : `Completar ${t.title}`}
           checked={t.status === 'done'}
-          disabled={busy}
           onCheckedChange={() => void complete(t)}
         />
         <button className="task-main" onClick={() => setEdit({ ...t })}>
@@ -609,7 +660,6 @@ export default function Workspace() {
               className="inline-action start-btn"
               aria-label={`Empezar ${t.title}`}
               title={`Empezar ${t.title}`}
-              disabled={busy}
               onClick={() => void patch(t, { status: 'doing' })}
             >
               <Play size={14} />
@@ -624,7 +674,6 @@ export default function Workspace() {
                 className="inline-action reschedule-btn"
                 aria-label={`Planificar ${t.title} para hoy`}
                 title={`Planificar ${t.title} para hoy`}
-                disabled={busy}
                 onClick={() =>
                   void patch(t, {
                     planDate: date,
@@ -647,7 +696,7 @@ export default function Workspace() {
             className={'icon-btn ' + (t.top && t.planDate === date ? 'starred' : '')}
             title={t.top && t.planDate === date ? 'Quitar de Top 3' : 'Elegir para Top 3 de hoy'}
             aria-label={t.top && t.planDate === date ? 'Quitar de Top 3' : 'Elegir para Top 3 de hoy'}
-            disabled={busy || t.status === 'done'}
+            disabled={t.status === 'done'}
             onClick={() => toggleTop(t)}
           >
             <Star
@@ -780,7 +829,7 @@ export default function Workspace() {
                 <button
                   type="submit"
                   className="capture-button"
-                  disabled={busy || !quick.trim() || auth}
+                  disabled={!quick.trim() || auth}
                 >
                   Guardar
                 </button>
@@ -800,7 +849,7 @@ export default function Workspace() {
                         <button
                           className="text-btn"
                           onClick={openPlanner}
-                          disabled={auth || busy}
+                          disabled={auth}
                         >
                           <Sparkles size={16} /> Proponer mi día
                         </button>
@@ -829,7 +878,6 @@ export default function Workspace() {
                                 <button
                                   className="icon-btn"
                                   onClick={() => toggleTop(t)}
-                                  disabled={busy}
                                   aria-label={`Quitar ${t.title} de Top 3`}
                                 >
                                   <Star size={16} fill="currentColor" />
@@ -854,7 +902,6 @@ export default function Workspace() {
                                 <button
                                   className="complete-btn"
                                   onClick={() => void complete(t)}
-                                  disabled={busy}
                                 >
                                   {t.status === 'done' ? (
                                     <Check size={16} />
