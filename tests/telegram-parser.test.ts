@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTelegramTask } from '../lib/telegram-parser';
+import { parseTelegramTask, detectTelegramIntent } from '../lib/telegram-parser';
 
 describe('Telegram Parser Tests', () => {
   const refDate = '2026-10-15';
@@ -82,5 +82,56 @@ describe('Telegram Parser Tests', () => {
     assert.equal(parsed.minutes, 45);
     assert.equal(parsed.planDate, '2026-10-15');
     assert.equal(parsed.status, 'todo');
+  });
+
+  it('detects conversational intent: update last task area (user screenshot case)', () => {
+    const intent = detectTelegramIntent('Guardalo en el area de proyectos', refDate);
+    assert.equal(intent.type, 'update_last');
+    if (intent.type === 'update_last') {
+      assert.equal(intent.updates.area, 'Proyectos');
+    }
+
+    const intent2 = detectTelegramIntent('área trabajo', refDate);
+    assert.equal(intent2.type, 'update_last');
+    if (intent2.type === 'update_last') {
+      assert.equal(intent2.updates.area, 'Trabajo');
+    }
+  });
+
+  it('detects conversational intent: planDate, priority, and duration updates', () => {
+    const iHoy = detectTelegramIntent('Ponelo para hoy', refDate);
+    assert.equal(iHoy.type, 'update_last');
+    if (iHoy.type === 'update_last') {
+      assert.equal(iHoy.updates.planDate, '2026-10-15');
+      assert.equal(iHoy.updates.status, 'todo');
+    }
+
+    const iPrio = detectTelegramIntent('prioridad alta', refDate);
+    assert.equal(iPrio.type, 'update_last');
+    if (iPrio.type === 'update_last') {
+      assert.equal(iPrio.updates.priority, 3);
+    }
+
+    const iDur = detectTelegramIntent('que dure 45 minutos', refDate);
+    assert.equal(iDur.type, 'update_last');
+    if (iDur.type === 'update_last') {
+      assert.equal(iDur.updates.minutes, 45);
+    }
+  });
+
+  it('detects conversational intent: queries (today and inbox)', () => {
+    const qToday = detectTelegramIntent('¿Qué tengo para hoy?', refDate);
+    assert.equal(qToday.type, 'query_today');
+
+    const qInbox = detectTelegramIntent('¿Qué hay en la bandeja?', refDate);
+    assert.equal(qInbox.type, 'query_inbox');
+  });
+
+  it('detects conversational intent: complete and delete', () => {
+    const c1 = detectTelegramIntent('listo', refDate);
+    assert.equal(c1.type, 'complete_last');
+
+    const d1 = detectTelegramIntent('borralo', refDate);
+    assert.equal(d1.type, 'delete_last');
   });
 });
