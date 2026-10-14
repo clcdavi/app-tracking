@@ -7,8 +7,11 @@ import { parseTelegramTask } from './telegram-parser';
 let botInstance: Bot | null = null;
 let isBotStarting = false;
 
-function escapeMarkdown(text: string): string {
-  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 export function createTelegramBot(token: string): Bot {
@@ -52,21 +55,21 @@ export function createTelegramBot(token: string): Bot {
             .where(eq(users.id, matchedUser.id));
 
           await ctx.reply(
-            `🎉 *¡Cuenta vinculada con éxito, ${escapeMarkdown(matchedUser.displayName)}!*\n\n` +
-            `A partir de ahora, cualquier mensaje que me envíes se convertirá en un pendiente en tu Enfoco\\.\n\n` +
-            `💡 *Probá enviando ahora:*\n` +
-            `• \`Comprar leche\`\n` +
-            `• \`Terminar reporte #trabajo !alta hoy 45m\`\n\n` +
-            `Usá /help para ver todas las opciones disponibles\\.`,
-            { parse_mode: 'MarkdownV2' }
+            `🎉 <b>¡Cuenta vinculada con éxito, ${escapeHtml(matchedUser.displayName)}!</b>\n\n` +
+            `A partir de ahora, cualquier mensaje que me envíes se convertirá en un pendiente en tu Enfoco.\n\n` +
+            `💡 <b>Probá enviando ahora:</b>\n` +
+            `• <code>Comprar leche</code>\n` +
+            `• <code>Terminar reporte #trabajo !alta hoy 45m</code>\n\n` +
+            `Usá /help para ver todas las opciones disponibles.`,
+            { parse_mode: 'HTML' }
           );
           return;
         }
 
         await ctx.reply(
-          '⚠️ El enlace de vinculación no es válido o ha expirado\\.\n' +
-          'Por favor, generá un nuevo enlace desde la sección de *Integraciones* en Enfoco\\.',
-          { parse_mode: 'MarkdownV2' }
+          '⚠️ El enlace de vinculación no es válido o ha expirado.\n' +
+          'Por favor, generá un nuevo enlace desde la sección de <b>Integraciones</b> en Enfoco.',
+          { parse_mode: 'HTML' }
         );
         return;
       } catch (e) {
@@ -86,18 +89,18 @@ export function createTelegramBot(token: string): Bot {
 
       if (existingUser) {
         await ctx.reply(
-          `👋 ¡Hola de nuevo, *${escapeMarkdown(existingUser.displayName)}*!\n\n` +
-          `Tu cuenta ya está conectada\\. Enviame cualquier texto y lo guardaré en tus pendientes de Enfoco\\.\n\n` +
-          `Escribí /help para ver la sintaxis y comandos\\.`,
-          { parse_mode: 'MarkdownV2' }
+          `👋 ¡Hola de nuevo, <b>${escapeHtml(existingUser.displayName)}</b>!\n\n` +
+          `Tu cuenta ya está conectada. Enviame cualquier texto y lo guardaré en tus pendientes de Enfoco.\n\n` +
+          `Escribí /help para ver la sintaxis y comandos.`,
+          { parse_mode: 'HTML' }
         );
       } else {
         await ctx.reply(
-          '👋 ¡Hola! Para conectar tu cuenta de *Enfoco* con este bot:\n\n' +
-          '1. Entrá a tu cuenta de Enfoco en la web\\.\n' +
-          '2. Ve a la sección *Integraciones*\\.\n' +
-          '3. Hacé clic en *Conectar Telegram*\\.',
-          { parse_mode: 'MarkdownV2' }
+          '👋 ¡Hola! Para conectar tu cuenta de <b>Enfoco</b> con este bot:\n\n' +
+          '1. Entrá a tu cuenta de Enfoco en la web.\n' +
+          '2. Ve a la sección <b>Integraciones</b>.\n' +
+          '3. Hacé clic en <b>Conectar Telegram</b>.',
+          { parse_mode: 'HTML' }
         );
       }
     } catch (e) {
@@ -109,18 +112,18 @@ export function createTelegramBot(token: string): Bot {
   // /help command
   bot.command('help', async (ctx) => {
     await ctx.reply(
-      `📖 *Guía de captura rápida en Enfoco*\n\n` +
-      `Cualquier mensaje que me envíes se guarda al instante\\.\n\n` +
-      `🏷️ *Etiquetas inteligentes:*\n` +
-      `• *Área:* \`#trabajo\`, \`#personal\`, \`#estudio\`, \`#iglesia\`, \`#proyectos\`\n` +
-      `• *Prioridad:* \`!alta\` \\(\`!3\`\\), \`!media\` \\(\`!2\`\\), \`!baja\` \\(\`!1\`\\)\n` +
-      `• *Duración:* \`15m\`, \`30m\`, \`45m\`, \`1h\`, \`2h\`, \`1h30m\`\n` +
-      `• *Fechas:* \`hoy\`, \`mañana\`, o \`AAAA-MM-DD\`\n\n` +
-      `📌 *Ejemplos:*\n` +
-      `• \`Llamar a Carlos 15m #trabajo !alta hoy\`\n` +
-      `• \`Comprar café en el súper\`\n` +
-      `• \`Repasar examen de inglés mañana 1h #estudio\``,
-      { parse_mode: 'MarkdownV2' }
+      `📖 <b>Guía de captura rápida en Enfoco</b>\n\n` +
+      `Cualquier mensaje que me envíes se guarda al instante.\n\n` +
+      `🏷️ <b>Etiquetas inteligentes:</b>\n` +
+      `• <b>Área:</b> <code>#trabajo</code>, <code>#personal</code>, <code>#estudio</code>, <code>#iglesia</code>, <code>#proyectos</code>\n` +
+      `• <b>Prioridad:</b> <code>!alta</code> (o <code>!3</code>), <code>!media</code> (o <code>!2</code>), <code>!baja</code> (o <code>!1</code>)\n` +
+      `• <b>Duración:</b> <code>15m</code>, <code>30m</code>, <code>45m</code>, <code>1h</code>, <code>2h</code>, <code>1h30m</code>\n` +
+      `• <b>Fechas:</b> <code>hoy</code>, <code>mañana</code>, o <code>AAAA-MM-DD</code>\n\n` +
+      `📌 <b>Ejemplos:</b>\n` +
+      `• <code>Llamar a Carlos 15m #trabajo !alta hoy</code>\n` +
+      `• <code>Comprar café en el súper</code>\n` +
+      `• <code>Repasar examen de inglés mañana 1h #estudio</code>`,
+      { parse_mode: 'HTML' }
     );
   });
 
@@ -215,9 +218,9 @@ export function createTelegramBot(token: string): Bot {
 
       if (!user) {
         await ctx.reply(
-          '🔒 Tu cuenta de Telegram no está vinculada a Enfoco\\.\n\n' +
-          'Ingresá a la web de *Enfoco*, ve a *Integraciones* y hacé clic en *Conectar Telegram*\\.',
-          { parse_mode: 'MarkdownV2' }
+          '🔒 Tu cuenta de Telegram no está vinculada a Enfoco.\n\n' +
+          'Ingresá a la web de <b>Enfoco</b>, ve a <b>Integraciones</b> y hacé clic en <b>Conectar Telegram</b>.',
+          { parse_mode: 'HTML' }
         );
         return;
       }
@@ -240,7 +243,7 @@ export function createTelegramBot(token: string): Bot {
         .returning({ id: tasks.id });
 
       const prioEmoji = parsed.priority === 3 ? '🔴 Alta' : parsed.priority === 2 ? '🟡 Media' : '🟢 Baja';
-      const dateText = parsed.planDate ? `📅 Día: *${parsed.planDate}*` : '📥 *Bandeja de entrada*';
+      const dateText = parsed.planDate ? `📅 Día: <b>${escapeHtml(parsed.planDate)}</b>` : '📥 <b>Bandeja de entrada</b>';
 
       const keyboard = new InlineKeyboard()
         .text('✅ Completar', `done:${newTask.id}`)
@@ -248,13 +251,13 @@ export function createTelegramBot(token: string): Bot {
         .text('🗑️ Borrar', `del:${newTask.id}`);
 
       await ctx.reply(
-        `✅ *Guardado en Enfoco*\n\n` +
-        `📌 *${escapeMarkdown(parsed.title)}*\n` +
-        `📁 Área: *${escapeMarkdown(parsed.area)}* \\| ${prioEmoji}\n` +
-        `⏱️ Duración: *${parsed.minutes} min*\n` +
+        `✅ <b>Guardado en Enfoco</b>\n\n` +
+        `📌 <b>${escapeHtml(parsed.title)}</b>\n` +
+        `📁 Área: <b>${escapeHtml(parsed.area)}</b> | ${prioEmoji}\n` +
+        `⏱️ Duración: <b>${parsed.minutes} min</b>\n` +
         `${dateText}`,
         {
-          parse_mode: 'MarkdownV2',
+          parse_mode: 'HTML',
           reply_markup: keyboard,
         }
       );
