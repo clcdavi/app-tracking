@@ -75,7 +75,7 @@ export function SettingsDialog({
       if (!res.ok) {
         throw new Error(data.error || 'No se pudo enviar la notificación');
       }
-      toast.success(`Notificación enviada a Telegram: ${data.message}`);
+      toast.success(data.message || 'Notificación enviada a Telegram con éxito.');
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
