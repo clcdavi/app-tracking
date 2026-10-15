@@ -201,6 +201,41 @@ export function createTelegramBot(token: string): Bot {
 
         await ctx.answerCallbackQuery({ text: 'Pendiente eliminado 🗑️' });
         await ctx.deleteMessage();
+      } else if (data.startsWith('defer_tomorrow:')) {
+        const refDate = data.slice(15);
+        const [y, m, d] = refDate.split('-').map(Number);
+        const tomorrowStr = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+
+        await db
+          .update(tasks)
+          .set({ planDate: tomorrowStr, updatedAt: new Date() })
+          .where(
+            and(
+              eq(tasks.userId, user.id),
+              eq(tasks.planDate, refDate),
+              ne(tasks.status, 'done')
+            )
+          );
+
+        await ctx.answerCallbackQuery({ text: 'Pendientes pasados a mañana 📅' });
+        await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+        await ctx.reply(`📅 Los pendientes no terminados se pasaron para <b>mañana (${tomorrowStr})</b>.`, { parse_mode: 'HTML' });
+      } else if (data.startsWith('defer_inbox:')) {
+        const refDate = data.slice(12);
+        await db
+          .update(tasks)
+          .set({ planDate: '', status: 'inbox', top: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(tasks.userId, user.id),
+              eq(tasks.planDate, refDate),
+              ne(tasks.status, 'done')
+            )
+          );
+
+        await ctx.answerCallbackQuery({ text: 'Movidos a la bandeja 📥' });
+        await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+        await ctx.reply(`📥 Los pendientes no terminados se movieron a tu <b>bandeja de entrada</b>.`, { parse_mode: 'HTML' });
       }
     } catch (e) {
       console.error('Error handling callback query:', e);

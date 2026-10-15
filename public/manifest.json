@@ -1,0 +1,17 @@
+{
+  "name": "Enfoco · Tu día con intención",
+  "short_name": "Enfoco",
+  "description": "Tus prioridades, un plan posible y seguimiento de lo importante.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#315df5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

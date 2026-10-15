@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, integer, smallint, boolean, timestamp, uuid, index, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, varchar, integer, smallint, boolean, timestamp, uuid, index, primaryKey, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -71,11 +71,31 @@ export const integrationKeys = pgTable('integration_keys', {
   index('idx_integration_keys_user_id').on(table.userId),
 ]);
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const userSettings = pgTable('user_settings', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  settings: jsonb('settings').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const notificationLogs = pgTable('notification_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 40 }).notNull(),
+  referenceDate: varchar('reference_date', { length: 10 }).notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('idx_notification_logs_user_type_date').on(table.userId, table.type, table.referenceDate),
+]);
+
+export const usersRelations = relations(users, ({ many, one }) => ({
   tasks: many(tasks),
   sessions: many(sessions),
   dailyBudgets: many(dailyBudgets),
   integrationKeys: many(integrationKeys),
+  settings: one(userSettings, {
+    fields: [users.id],
+    references: [userSettings.userId],
+  }),
 }));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
@@ -84,3 +104,4 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     references: [users.id],
   }),
 }));
+

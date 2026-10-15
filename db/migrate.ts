@@ -85,6 +85,27 @@ export async function runMigrations() {
       CREATE INDEX IF NOT EXISTS idx_integration_keys_user_id ON integration_keys(user_id);
     `);
 
+    // 6. User settings table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        settings JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // 7. Notification logs table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(40) NOT NULL,
+        reference_date VARCHAR(10) NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_notification_logs_user_type_date ON notification_logs(user_id, type, reference_date);
+    `);
+
     await client.query('COMMIT');
     console.log('Database schema verified / migrated successfully.');
   } catch (error) {

@@ -164,3 +164,72 @@ Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (sin
 
   return null;
 }
+
+export interface SubtaskItem {
+  title: string;
+  minutes: number;
+  priority: 1 | 2 | 3;
+  area: 'Personal' | 'Trabajo' | 'Estudio' | 'Iglesia' | 'Proyectos';
+}
+
+export async function breakdownTaskWithGemini(params: {
+  apiKey: string;
+  taskTitle: string;
+  taskNotes?: string;
+  area?: string;
+}): Promise<SubtaskItem[] | null> {
+  const { apiKey, taskTitle, taskNotes, area } = params;
+  if (!apiKey || !taskTitle.trim()) return null;
+
+  const prompt = `Como asistente de productividad de la app Enfoco, dividí la siguiente tarea en 3 a 5 subtareas concretas, accionables, secuenciales y realistas de entre 15 y 45 minutos cada una.
+Tarea principal: "${taskTitle}"
+${taskNotes ? `Notas/contexto: "${taskNotes}"` : ''}
+Área sugerida: "${area || 'Personal'}"
+
+Responde ÚNICAMENTE con un JSON array de objetos con este formato:
+[
+  {
+    "title": "primer paso concreto",
+    "minutes": 25,
+    "priority": 2,
+    "area": "${area || 'Personal'}"
+  }
+]`;
+
+  const modelsToTry = [
+    process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+  ];
+
+  for (const model of modelsToTry) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+
+      if (!response.ok) continue;
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) continue;
+
+      const items = JSON.parse(text) as SubtaskItem[];
+      if (Array.isArray(items) && items.length > 0) {
+        return items;
+      }
+    } catch (e) {
+      console.error(`[Gemini Breakdown Error with ${model}]`, e);
+    }
+  }
+
+  return null;
+}
+

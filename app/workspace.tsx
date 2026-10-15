@@ -29,6 +29,9 @@ import {
   Timer,
   Plug,
   LogOut,
+  Settings,
+  BarChart3,
+  Loader2,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -44,6 +47,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { SettingsDialog } from '@/components/settings-dialog';
+import { FocusModeDialog } from '@/components/focus-mode-dialog';
+import { TimeboxingView } from '@/components/timeboxing-view';
+import { MetricsView } from '@/components/metrics-view';
+import { UserSettings, DEFAULT_SETTINGS } from '@/lib/settings';
 import {
   Dialog,
   DialogContent,
@@ -94,6 +102,7 @@ const navs = [
   ['waiting', 'Esperando', Clock],
   ['all', 'Todos los pendientes', Layers],
   ['done', 'Completadas', CheckCheck],
+  ['metrics', 'Métricas y Hábitos', BarChart3],
 ] as const;
 
 const areaIcons = [Heart, Briefcase, BookOpen, Heart, Folder];
@@ -147,6 +156,7 @@ function Nav({
   date,
   user,
   onLogout,
+  onOpenSettings,
 }: {
   view: string;
   setView: (v: string) => void;
@@ -154,6 +164,7 @@ function Nav({
   date: string;
   user: UserInfo | null;
   onLogout: () => void;
+  onOpenSettings: () => void;
 }) {
   const { setOpenMobile } = useSidebar();
   function go(v: string) {
@@ -247,6 +258,13 @@ function Nav({
         <div className="sidebar-note">
           <Target size={16} /> Un día posible, a tu ritmo.
         </div>
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className="sidebar-integration w-full text-left"
+        >
+          <Settings size={16} /> Ajustes y Notificaciones
+        </button>
         <Link href="/integrations" className="sidebar-integration">
           <Plug size={16} /> Conectar otra app
         </Link>
@@ -274,6 +292,15 @@ export default function Workspace() {
   const [budgetInput, setBudgetInput] = useState('120');
   const [user, setUser] = useState<UserInfo | null>(null);
 
+  // New customization & productivity states
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [focusTaskId, setFocusTaskId] = useState<string | undefined>(undefined);
+  const [todayTab, setTodayTab] = useState<'list' | 'timeboxing'>('list');
+  const [aiBreakdownLoading, setAiBreakdownLoading] = useState(false);
+  const [aiSubtasks, setAiSubtasks] = useState<{ title: string; minutes: number }[] | null>(null);
+
   const isSyncingRef = useRef(false);
   const pendingSyncRef = useRef<Data | null>(null);
 
@@ -282,7 +309,7 @@ export default function Workspace() {
   ref.current.version = version;
 
   const tasks = data.tasks;
-  const budget = data.budgets[date] ?? 120;
+  const budget = data.budgets[date] ?? settings.dailyBudget ?? 120;
 
   async function reload() {
     setLoading(true);
@@ -312,6 +339,19 @@ export default function Workspace() {
     }
   }
 
+  async function saveSettings(next: UserSettings) {
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      throw new Error(result.error || 'Error al guardar ajustes');
+    }
+    setSettings(result.settings);
+  }
+
   useEffect(() => {
     void reload();
 
@@ -325,6 +365,16 @@ export default function Workspace() {
             displayName: res.user.displayName,
             email: res.user.email,
           });
+        }
+      })
+      .catch(() => {});
+
+    // Fetch user settings
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res: { settings?: UserSettings } | null) => {
+        if (res?.settings) {
+          setSettings(res.settings);
         }
       })
       .catch(() => {});
@@ -528,6 +578,7 @@ export default function Workspace() {
           else if (view === 'waiting') match = t.status === 'waiting';
           else if (view === 'done') match = t.status === 'done';
           else if (view === 'all') match = t.status !== 'done';
+          else if (view === 'metrics') match = false;
           else match = t.area === view && t.status !== 'done';
 
           return (
@@ -559,6 +610,7 @@ export default function Workspace() {
     waiting: 'Lo que depende de una respuesta o de otra persona.',
     all: 'Todos tus pendientes, ordenados por urgencia y prioridad.',
     done: 'El registro de lo que ya avanzaste.',
+    metrics: 'Métricas de avance, tiempo invertido por área y constancia.',
   };
 
   function openPlanner() {
@@ -567,10 +619,84 @@ export default function Workspace() {
   }
 
   function startTask(topPriority = false) {
+    const t = newTask();
     setEdit({
-      ...newTask(),
+      ...t,
+      area: settings.defaultArea || t.area,
+      minutes: settings.defaultMinutes || t.minutes,
+      priority: settings.defaultPriority || t.priority,
       ...(topPriority ? { top: true, planDate: date, status: 'todo' as const } : {}),
     });
+    setAiSubtasks(null);
+  }
+
+  async function handleAiBreakdown() {
+    if (!edit || !edit.title.trim()) {
+      toast.error('Ingresá el título del pendiente para desglosarlo.');
+      return;
+    }
+    setAiBreakdownLoading(true);
+    try {
+      const res = await fetch('/api/ai/breakdown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: edit.title,
+          notes: edit.notes || '',
+          area: edit.area,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || 'No se pudo desglosar la tarea');
+      }
+      setAiSubtasks(result.subtasks || []);
+      toast.success('Desglose generado con Gemini AI.');
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setAiBreakdownLoading(false);
+    }
+  }
+
+  async function applyAiSubtasks() {
+    if (!edit || !aiSubtasks || aiSubtasks.length === 0) return;
+    const newItems: Task[] = aiSubtasks.map((st) => ({
+      id: 't-' + Math.random().toString(36).slice(2, 9),
+      title: st.title,
+      area: edit.area,
+      status: 'todo',
+      priority: edit.priority,
+      minutes: st.minutes || 20,
+      planDate: date,
+      deadline: edit.deadline || '',
+      followUp: '',
+      project: edit.project || edit.title,
+      notes: `Subtarea de: ${edit.title}`,
+      top: false,
+      created: new Date().toISOString(),
+      completed: '',
+      updated: new Date().toISOString(),
+    }));
+
+    const current = ref.current.data;
+    await persist({
+      ...current,
+      tasks: [...newItems, ...current.tasks],
+    });
+    setAiSubtasks(null);
+    toast.success(`Se agregaron ${newItems.length} subtareas a tu plan de hoy.`);
+  }
+
+  function appendSubtasksToNotes() {
+    if (!edit || !aiSubtasks) return;
+    const text = aiSubtasks.map((s) => `- [ ] ${s.title} (${s.minutes} min)`).join('\n');
+    setEdit({
+      ...edit,
+      notes: edit.notes ? `${edit.notes}\n\nSubtareas sugeridas:\n${text}` : `Subtareas sugeridas:\n${text}`,
+    });
+    setAiSubtasks(null);
+    toast.success('Subtareas agregadas a las notas.');
   }
 
   const complete = (t: Task) =>
@@ -692,6 +818,19 @@ export default function Workspace() {
           {t.status !== 'todo' && t.status !== 'done' && (
             <span className="status-text">{states[t.status]}</span>
           )}
+          {t.status !== 'done' && (
+            <button
+              className="icon-btn"
+              title="Iniciar bloque de enfoque"
+              aria-label={`Iniciar bloque de enfoque para ${t.title}`}
+              onClick={() => {
+                setFocusTaskId(t.id);
+                setFocusOpen(true);
+              }}
+            >
+              <Timer size={16} />
+            </button>
+          )}
           <button
             className={'icon-btn ' + (t.top && t.planDate === date ? 'starred' : '')}
             title={t.top && t.planDate === date ? 'Quitar de Top 3' : 'Elegir para Top 3 de hoy'}
@@ -721,6 +860,7 @@ export default function Workspace() {
         date={date}
         user={user}
         onLogout={handleLogout}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="workspace">
         <header className="topbar">
@@ -732,6 +872,27 @@ export default function Workspace() {
           </div>
           <div className="top-actions">
             <span className="private-label">Espacio privado</span>
+            <button
+              className="outline-btn"
+              onClick={() => {
+                const nextTask =
+                  top.find((t) => t.status !== 'done') ||
+                  tasks.find((t) => t.status !== 'done');
+                setFocusTaskId(nextTask?.id);
+                setFocusOpen(true);
+              }}
+              title="Modo Enfoque (Pomodoro)"
+            >
+              <Timer size={16} /> Modo Enfoque
+            </button>
+            <button
+              className="icon-btn"
+              onClick={() => setSettingsOpen(true)}
+              title="Ajustes y Personalización"
+              aria-label="Ajustes y Personalización"
+            >
+              <Settings size={18} />
+            </button>
             <button
               className="icon-btn"
               aria-label="Actualizar pendientes"
@@ -837,148 +998,210 @@ export default function Workspace() {
 
               <div className={'content-grid ' + (view === 'today' ? '' : 'single')}>
                 <div className="main-column">
-                  {view === 'today' && (
+                  {view === 'metrics' ? (
+                    <MetricsView
+                      tasks={tasks}
+                      date={date}
+                      onSelectTask={(t) => setEdit({ ...t })}
+                    />
+                  ) : (
                     <>
-                      <div className="section-heading">
-                        <div>
-                          <h2>
-                            <Target size={19} /> Tus 3 prioridades
-                          </h2>
-                          <p>No hace falta hacer todo para avanzar.</p>
-                        </div>
-                        <button
-                          className="text-btn"
-                          onClick={openPlanner}
-                          disabled={auth}
-                        >
-                          <Sparkles size={16} /> Proponer mi día
-                        </button>
-                      </div>
-
-                      <div className="top-three">
-                        {[0, 1, 2].map((i) => {
-                          const t = top[i];
-                          return t ? (
-                            <article
-                              className={
-                                'focus-card ' + (t.status === 'done' ? 'completed' : '')
-                              }
-                              key={t.id}
-                            >
-                              <div className="focus-top">
-                                <span className="focus-number">0{i + 1}</span>
-                                <span
-                                  className={
-                                    'area-pill area-' +
-                                    areas.indexOf(t.area as typeof areas[number])
-                                  }
-                                >
-                                  {t.area}
-                                </span>
-                                <button
-                                  className="icon-btn"
-                                  onClick={() => toggleTop(t)}
-                                  aria-label={`Quitar ${t.title} de Top 3`}
-                                >
-                                  <Star size={16} fill="currentColor" />
-                                </button>
-                              </div>
-                              <button
-                                className="focus-title"
-                                onClick={() => setEdit({ ...t })}
-                              >
-                                {t.title}
-                              </button>
-                              <p className="focus-reason">
-                                {t.status === 'done'
-                                  ? 'Completada. Buen avance.'
-                                  : reason(t, date)}
-                              </p>
-                              <div className="focus-bottom">
-                                <span>
-                                  <Clock size={14} />
-                                  {t.minutes} min
-                                </span>
-                                <button
-                                  className="complete-btn"
-                                  onClick={() => void complete(t)}
-                                >
-                                  {t.status === 'done' ? (
-                                    <Check size={16} />
-                                  ) : (
-                                    <Circle size={16} />
-                                  )}{' '}
-                                  {t.status === 'done' ? 'Hecha' : 'Completar'}
-                                </button>
-                              </div>
-                            </article>
-                          ) : (
+                      {view === 'today' && (
+                        <>
+                          <div className="section-heading">
+                            <div>
+                              <h2>
+                                <Target size={19} /> Tus 3 prioridades
+                              </h2>
+                              <p>No hace falta hacer todo para avanzar.</p>
+                            </div>
                             <button
-                              className="focus-card empty-focus"
-                              key={i}
-                              onClick={() =>
-                                tasks.some((task) => task.status !== 'done')
-                                  ? openPlanner()
-                                  : startTask(true)
-                              }
+                              className="text-btn"
+                              onClick={openPlanner}
                               disabled={auth}
                             >
-                              <span className="focus-number">0{i + 1}</span>
-                              <span className="empty-plus">
-                                <Plus size={21} />
-                              </span>
-                              <b>Elegí una prioridad</b>
-                              <span>Un paso que valga la pena hoy</span>
+                              <Sparkles size={16} /> Proponer mi día
                             </button>
-                          );
-                        })}
-                      </div>
+                          </div>
 
-                      {needsAttention.length > 0 && (
-                        <button
-                          className="attention-strip"
-                          onClick={() => setView('attention')}
-                        >
-                          <span>
-                            <Flag size={17} />
-                            <b>
-                              {needsAttention.length}{' '}
-                              {needsAttention.length === 1
-                                ? 'pendiente necesita'
-                                : 'pendientes necesitan'}{' '}
-                              tu atención
-                            </b>
-                          </span>
-                          <span>
-                            Revisar <ChevronRight size={16} />
-                          </span>
-                        </button>
+                          <div className="top-three">
+                            {[0, 1, 2].map((i) => {
+                              const t = top[i];
+                              return t ? (
+                                <article
+                                  className={
+                                    'focus-card ' + (t.status === 'done' ? 'completed' : '')
+                                  }
+                                  key={t.id}
+                                >
+                                  <div className="focus-top">
+                                    <span className="focus-number">0{i + 1}</span>
+                                    <span
+                                      className={
+                                        'area-pill area-' +
+                                        areas.indexOf(t.area as typeof areas[number])
+                                      }
+                                    >
+                                      {t.area}
+                                    </span>
+                                    <div className="flex items-center gap-1 ml-auto">
+                                      {t.status !== 'done' && (
+                                        <button
+                                          className="icon-btn"
+                                          onClick={() => {
+                                            setFocusTaskId(t.id);
+                                            setFocusOpen(true);
+                                          }}
+                                          title="Iniciar bloque de enfoque"
+                                          aria-label={`Iniciar bloque de enfoque para ${t.title}`}
+                                        >
+                                          <Timer size={15} />
+                                        </button>
+                                      )}
+                                      <button
+                                        className="icon-btn"
+                                        onClick={() => toggleTop(t)}
+                                        aria-label={`Quitar ${t.title} de Top 3`}
+                                      >
+                                        <Star size={16} fill="currentColor" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <button
+                                    className="focus-title"
+                                    onClick={() => setEdit({ ...t })}
+                                  >
+                                    {t.title}
+                                  </button>
+                                  <p className="focus-reason">
+                                    {t.status === 'done'
+                                      ? 'Completada. Buen avance.'
+                                      : reason(t, date)}
+                                  </p>
+                                  <div className="focus-bottom">
+                                    <span>
+                                      <Clock size={14} />
+                                      {t.minutes} min
+                                    </span>
+                                    <button
+                                      className="complete-btn"
+                                      onClick={() => void complete(t)}
+                                    >
+                                      {t.status === 'done' ? (
+                                        <Check size={16} />
+                                      ) : (
+                                        <Circle size={16} />
+                                      )}{' '}
+                                      {t.status === 'done' ? 'Hecha' : 'Completar'}
+                                    </button>
+                                  </div>
+                                </article>
+                              ) : (
+                                <button
+                                  className="focus-card empty-focus"
+                                  key={i}
+                                  onClick={() =>
+                                    tasks.some((task) => task.status !== 'done')
+                                      ? openPlanner()
+                                      : startTask(true)
+                                  }
+                                  disabled={auth}
+                                >
+                                  <span className="focus-number">0{i + 1}</span>
+                                  <span className="empty-plus">
+                                    <Plus size={21} />
+                                  </span>
+                                  <b>Elegí una prioridad</b>
+                                  <span>Un paso que valga la pena hoy</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {needsAttention.length > 0 && (
+                            <button
+                              className="attention-strip"
+                              onClick={() => setView('attention')}
+                            >
+                              <span>
+                                <Flag size={17} />
+                                <b>
+                                  {needsAttention.length}{' '}
+                                  {needsAttention.length === 1
+                                    ? 'pendiente necesita'
+                                    : 'pendientes necesitan'}{' '}
+                                  tu atención
+                                </b>
+                              </span>
+                              <span>
+                                Revisar <ChevronRight size={16} />
+                              </span>
+                            </button>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
 
-                  <section className="task-panel">
-                    <div className="list-toolbar">
-                      <div>
-                        <h2>
-                          {view === 'today' ? 'Tu plan de hoy' : 'Pendientes'}{' '}
-                          <span className="count-pill">{filtered.length}</span>
-                        </h2>
-                      </div>
-                      <label className="search">
-                        <Search size={16} />
-                        <input
-                          aria-label="Buscar en esta vista"
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                          placeholder="Buscar…"
-                        />
-                      </label>
-                    </div>
+                      <section className="task-panel">
+                        <div className="list-toolbar">
+                          <div className="flex items-center gap-3">
+                            <h2>
+                              {view === 'today' ? 'Tu plan de hoy' : 'Pendientes'}{' '}
+                              <span className="count-pill">{filtered.length}</span>
+                            </h2>
+                            {view === 'today' && (
+                              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => setTodayTab('list')}
+                                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
+                                    todayTab === 'list'
+                                      ? 'bg-white text-slate-800 shadow-xs'
+                                      : 'text-slate-500 hover:text-slate-700'
+                                  }`}
+                                >
+                                  Lista
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTodayTab('timeboxing')}
+                                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
+                                    todayTab === 'timeboxing'
+                                      ? 'bg-white text-blue-600 shadow-xs'
+                                      : 'text-slate-500 hover:text-slate-700'
+                                  }`}
+                                >
+                                  Timeboxing
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <label className="search">
+                            <Search size={16} />
+                            <input
+                              aria-label="Buscar en esta vista"
+                              value={query}
+                              onChange={(e) => setQuery(e.target.value)}
+                              placeholder="Buscar…"
+                            />
+                          </label>
+                        </div>
 
-                    {filtered.length ? (
-                      filtered.map(row)
-                    ) : (
+                        {view === 'today' && todayTab === 'timeboxing' ? (
+                          <div className="p-5">
+                            <TimeboxingView
+                              tasks={dayTasks}
+                              workdayStart={settings.workdayStart}
+                              onToggleDone={(t) => void complete(t)}
+                              onSelectTask={(t) => setEdit({ ...t })}
+                              onStartFocus={(t) => {
+                                setFocusTaskId(t.id);
+                                setFocusOpen(true);
+                              }}
+                            />
+                          </div>
+                        ) : filtered.length ? (
+                          filtered.map(row)
+                        ) : (
                       <Empty className="empty-state">
                         <EmptyHeader>
                           <div className="empty-symbol">
@@ -1038,6 +1261,8 @@ export default function Workspace() {
                       Lo que no elijas hoy sigue en tus pendientes. Podés volver a planificarlo
                       cuando tenga sentido.
                     </p>
+                  )}
+                    </>
                   )}
                 </div>
 
@@ -1320,6 +1545,68 @@ export default function Workspace() {
                 />
               </div>
 
+              {/* Desglose Inteligente con IA (Gemini) */}
+              <div className="mb-4 p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-900">
+                    <Sparkles size={15} className="text-blue-600" />
+                    <span>Desglose Inteligente (Gemini AI)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAiBreakdown}
+                    disabled={aiBreakdownLoading || !edit.title.trim()}
+                    className="inline-flex items-center gap-1.5 text-xs bg-white hover:bg-blue-100 text-blue-700 font-semibold px-3 py-1.5 rounded-lg border border-blue-200 shadow-2xs transition-colors disabled:opacity-50"
+                  >
+                    {aiBreakdownLoading ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={13} />
+                    )}
+                    {aiBreakdownLoading ? 'Desglosando...' : 'Desglosar en pasos'}
+                  </button>
+                </div>
+
+                {aiSubtasks && aiSubtasks.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-blue-200/60">
+                    <span className="text-[11px] font-medium text-blue-800">
+                      Subtareas sugeridas ({aiSubtasks.reduce((a, b) => a + b.minutes, 0)} min total):
+                    </span>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {aiSubtasks.map((st, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-blue-100"
+                        >
+                          <span className="text-slate-800 font-medium truncate flex-1">
+                            {idx + 1}. {st.title}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-mono shrink-0 ml-2 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {st.minutes} min
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={applyAiSubtasks}
+                        className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors flex-1"
+                      >
+                        Insertar como pendientes para hoy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={appendSubtasksToNotes}
+                        className="text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Copiar a notas
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {edit.top && (
                 <p className="form-hint">
                   Está en tu Top 3 del {dayLabel(edit.planDate)}.
@@ -1539,6 +1826,28 @@ export default function Workspace() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onSave={saveSettings}
+      />
+
+      {/* Focus Mode (Pomodoro) Dialog */}
+      <FocusModeDialog
+        open={focusOpen}
+        onOpenChange={setFocusOpen}
+        tasks={tasks}
+        initialTaskId={focusTaskId}
+        focusMinutes={settings.focusMinutes}
+        breakMinutes={settings.breakMinutes}
+        soundEnabled={settings.focusSound}
+        onCompleteTask={async (t) => {
+          await complete(t);
+        }}
+      />
 
       <Toaster position="bottom-right" richColors closeButton />
     </SidebarProvider>
