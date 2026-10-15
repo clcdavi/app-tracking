@@ -96,6 +96,18 @@ describe('Telegram Parser Tests', () => {
     if (intent2.type === 'update_last') {
       assert.equal(intent2.updates.area, 'Trabajo');
     }
+
+    const intent3 = detectTelegramIntent('Pasalo a mis proyectos', refDate);
+    assert.equal(intent3.type, 'update_last');
+    if (intent3.type === 'update_last') {
+      assert.equal(intent3.updates.area, 'Proyectos');
+    }
+
+    const intent4 = detectTelegramIntent('a proyectos', refDate);
+    assert.equal(intent4.type, 'update_last');
+    if (intent4.type === 'update_last') {
+      assert.equal(intent4.updates.area, 'Proyectos');
+    }
   });
 
   it('detects conversational intent: planDate, priority, and duration updates', () => {

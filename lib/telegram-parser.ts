@@ -227,9 +227,9 @@ export function detectTelegramIntent(rawText: string, referenceDate?: string): T
     return { type: 'delete_last' };
   }
 
-  // 5. Update last task area: "guardalo en el area de proyectos", "en proyectos", "mover a trabajo", etc.
+  // 5. Update last task area: "guardalo en el area de proyectos", "pasalo a mis proyectos", "en proyectos", "proyectos", etc.
   const areaUpdateMatch = norm.match(
-    /^(?:guardalo|guardala|ponelo|ponela|pasalo|pasala|cambialo|cambiala|cambia|mover|moverlo|moverla|mandalo|mandala)?\s*(?:en|al?|a)?\s*(?:el\s*area\s*de\s*|area\s*)?(proyectos?|trabajo|personal|estudios?|iglesia)$/i
+    /^(?:guardalo|guardala|ponelo|ponela|pasalo|pasala|cambialo|cambiala|cambia|cambie|mover|moverlo|moverla|mandalo|mandala|es|va|dejalo|dejala)?\s*(?:en|al?|a|para)?\s*(?:el\s*area\s*de|la\s*area\s*de|el\s*area|area\s*de|area|mis|mi|los|las)?\s*(proyectos?|trabajo|personal|estudios?|iglesia)$/i
   );
   if (areaUpdateMatch) {
     const rawTag = normalizeString(areaUpdateMatch[1]);
@@ -243,8 +243,8 @@ export function detectTelegramIntent(rawText: string, referenceDate?: string): T
     }
   }
 
-  // 6. Update last task planDate: "ponelo para hoy", "para hoy", "para mañana", "a la bandeja"
-  if (/^(?:guardalo|ponelo|pasalo|cambialo|planificalo|agendalo|es)?\s*(?:para\s+)?(hoy)$/i.test(norm)) {
+  // 6. Update last task planDate: "ponelo para hoy", "pasalo a hoy", "para hoy", "hoy", "para mañana", "a la bandeja"
+  if (/^(?:guardalo|guardala|ponelo|ponela|pasalo|pasala|cambialo|cambiala|cambia|planificalo|agendalo|es|mover|moverlo)?\s*(?:para|a|en)?\s*(hoy)$/i.test(norm)) {
     return {
       type: 'update_last',
       updates: { planDate: todayStr, status: 'todo' },
@@ -252,7 +252,7 @@ export function detectTelegramIntent(rawText: string, referenceDate?: string): T
     };
   }
 
-  if (/^(?:guardalo|ponelo|pasalo|cambialo|planificalo|agendalo|es)?\s*(?:para\s+)?(manana)$/i.test(norm)) {
+  if (/^(?:guardalo|guardala|ponelo|ponela|pasalo|pasala|cambialo|cambiala|cambia|planificalo|agendalo|es|mover|moverlo)?\s*(?:para|a|en)?\s*(manana)$/i.test(norm)) {
     return {
       type: 'update_last',
       updates: { planDate: tomorrowStr, status: 'todo' },
@@ -260,7 +260,7 @@ export function detectTelegramIntent(rawText: string, referenceDate?: string): T
     };
   }
 
-  if (/^(?:mandalo|pasalo|dejalo)?\s*(?:a\s+la|en\s+la)?\s*(bandeja|inbox)$/i.test(norm)) {
+  if (/^(?:mandalo|pasalo|dejalo|mover|cambialo)?\s*(?:a\s+la|en\s+la|a|en)?\s*(bandeja|inbox)$/i.test(norm)) {
     return {
       type: 'update_last',
       updates: { planDate: '', status: 'inbox' },
