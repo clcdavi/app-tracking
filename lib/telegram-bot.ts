@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard, type Context } from 'grammy';
 import { db } from '@/db';
 import { users, tasks } from '@/db/schema';
-import { eq, and, gt, desc, ne } from 'drizzle-orm';
+import { eq, and, gt, desc, ne, or, isNull } from 'drizzle-orm';
 import { parseTelegramTask, detectTelegramIntent, type ParsedTelegramTask } from './telegram-parser';
 import { processWithGemini, type TaskContextItem } from './gemini';
 
@@ -31,8 +31,9 @@ const HELP_MESSAGE =
   `• <i>«Listo»</i> (marca completada la última)\n` +
   `• <i>«Borralo»</i> (elimina la última)\n\n` +
   `📋 <b>Consultas y comandos:</b>\n` +
-  `• /hoy o <i>«¿Qué tengo para hoy?»</i>\n` +
-  `• /inbox o <i>«¿Qué hay en la bandeja?»</i>\n` +
+  `• /pendientes o <i>«¿Hay pendientes?»</i> — Ver todos tus pendientes activos\n` +
+  `• /hoy o <i>«¿Qué tengo para hoy?»</i> — Ver tareas de hoy\n` +
+  `• /inbox o <i>«¿Qué hay en la bandeja?»</i> — Ver bandeja sin fecha\n` +
   `• /completar — Completa la tarea más reciente\n` +
   `• /borrar — Elimina la última tarea creada\n` +
   `• /help — Muestra este menú\n` +
@@ -151,9 +152,25 @@ async function executeQueryToday(
     .orderBy(desc(tasks.priority), desc(tasks.createdAt));
 
   if (todayTasks.length === 0) {
+    const pendingBacklog = await db
+      .select({ id: tasks.id, title: tasks.title })
+      .from(tasks)
+      .where(and(eq(tasks.userId, user.id), ne(tasks.status, 'done')))
+      .limit(1);
+
+    if (pendingBacklog.length > 0) {
+      await ctx.reply(
+        `📅 <b>No tenés tareas planificadas específicamente para hoy (${escapeHtml(todayStr)}).</b>\n\n` +
+        `💡 Pero tenés tareas activas en tus <b>/pendientes</b> (ej: <i>«${escapeHtml(pendingBacklog[0].title)}»</i>).\n` +
+        `Escribí <b>/pendientes</b> para verlas o pedime: <i>«Poné ${escapeHtml(pendingBacklog[0].title.slice(0, 20))} para hoy»</i>.`,
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
+
     await ctx.reply(
       `📅 <b>No tenés tareas planificadas para hoy (${escapeHtml(todayStr)}).</b>\n\n` +
-      `Podés escribirme cualquier pendiente para agendarlo o consultar tu <b>/inbox</b>.`,
+      `¡Tu día está despejado! Podés escribirme cualquier pendiente para agendarlo o consultar tus <b>/pendientes</b>.`,
       { parse_mode: 'HTML' }
     );
     return;
@@ -180,6 +197,90 @@ async function executeQueryToday(
   await ctx.reply(msg, { parse_mode: 'HTML' });
 }
 
+async function executeQueryPending(
+  ctx: Context,
+  user: { id: string; displayName: string },
+  todayStr: string,
+  replyPrefix?: string
+) {
+  const allTasks = await db
+    .select()
+    .from(tasks)
+    .where(and(eq(tasks.userId, user.id), ne(tasks.status, 'done')))
+    .orderBy(desc(tasks.priority), desc(tasks.createdAt));
+
+  if (allTasks.length === 0) {
+    await ctx.reply(
+      '🎉 <b>¡No tenés ningún pendiente activo en Enfoco!</b>\n\n' +
+      'Tu espacio está totalmente al día. Podés escribirme cualquier tarea nueva o mandar un audio cuando surja algo.',
+      { parse_mode: 'HTML' }
+    );
+    return;
+  }
+
+  const todayTasks = allTasks.filter((t) => t.planDate === todayStr);
+  const overdueTasks = allTasks.filter((t) => t.planDate && t.planDate < todayStr);
+  const backlogTasks = allTasks.filter((t) => !t.planDate || t.planDate === '');
+  const futureTasks = allTasks.filter((t) => t.planDate && t.planDate > todayStr);
+
+  const totalMinutes = allTasks.reduce((s, t) => s + t.minutes, 0);
+
+  let msg = replyPrefix ? `💬 <i>${escapeHtml(replyPrefix)}</i>\n\n` : '';
+  msg += `📋 <b>Tus tareas pendientes en Enfoco (${allTasks.length}):</b>\n`;
+  msg += `⏱️ Tiempo estimado: <b>${totalMinutes} min</b>\n\n`;
+
+  // Section 1: Overdue
+  if (overdueTasks.length > 0) {
+    msg += `⚠️ <b>Atrasadas (${overdueTasks.length}):</b>\n`;
+    for (const t of overdueTasks.slice(0, 3)) {
+      const prio = t.priority === 3 ? '🔴' : t.priority === 2 ? '🟡' : '🟢';
+      msg += `• 📌 <b>${escapeHtml(t.title)}</b> (${escapeHtml(t.area)} | ${prio} | ${t.planDate})\n`;
+    }
+    msg += '\n';
+  }
+
+  // Section 2: Today
+  if (todayTasks.length > 0) {
+    msg += `📅 <b>Para hoy (${todayTasks.length}):</b>\n`;
+    for (let i = 0; i < Math.min(todayTasks.length, 5); i++) {
+      const t = todayTasks[i];
+      const icon = t.status === 'doing' ? '⏳' : t.top ? '⭐' : '📌';
+      const prio = t.priority === 3 ? '🔴' : t.priority === 2 ? '🟡' : '🟢';
+      msg += `${i + 1}. ${icon} <b>${escapeHtml(t.title)}</b> (${escapeHtml(t.area)} | ${prio} | ${t.minutes}m)\n`;
+    }
+    msg += '\n';
+  }
+
+  // Section 3: Backlog / Sin fecha
+  if (backlogTasks.length > 0) {
+    const title = todayTasks.length > 0 ? '📥 Bandeja / Backlog' : '📋 Pendientes sin planificar';
+    msg += `<b>${title} (${backlogTasks.length}):</b>\n`;
+    const showCount = todayTasks.length > 0 ? 5 : 8;
+    for (let i = 0; i < Math.min(backlogTasks.length, showCount); i++) {
+      const t = backlogTasks[i];
+      const prio = t.priority === 3 ? '🔴' : t.priority === 2 ? '🟡' : '🟢';
+      msg += `${i + 1}. 📌 <b>${escapeHtml(t.title)}</b> (${escapeHtml(t.area)} | ${prio} | ${t.minutes}m)\n`;
+    }
+    if (backlogTasks.length > showCount) {
+      msg += `<i>... y ${backlogTasks.length - showCount} pendientes más en tu app.</i>\n`;
+    }
+    msg += '\n';
+  }
+
+  // Section 4: Future
+  if (futureTasks.length > 0 && todayTasks.length === 0 && backlogTasks.length < 5) {
+    msg += `🗓️ <b>Próximos días (${futureTasks.length}):</b>\n`;
+    for (const t of futureTasks.slice(0, 3)) {
+      msg += `• 📌 <b>${escapeHtml(t.title)}</b> (${t.planDate})\n`;
+    }
+    msg += '\n';
+  }
+
+  msg += `💡 <i>Tip: Podés decirme «Poné ${escapeHtml(allTasks[0].title.slice(0, 25))} para hoy» o «¿Qué tengo para hoy?».</i>`;
+
+  await ctx.reply(msg, { parse_mode: 'HTML' });
+}
+
 async function executeQueryInbox(
   ctx: Context,
   user: { id: string; displayName: string },
@@ -188,8 +289,18 @@ async function executeQueryInbox(
   const inboxTasks = await db
     .select()
     .from(tasks)
-    .where(and(eq(tasks.userId, user.id), eq(tasks.status, 'inbox')))
-    .orderBy(desc(tasks.createdAt))
+    .where(
+      and(
+        eq(tasks.userId, user.id),
+        ne(tasks.status, 'done'),
+        or(
+          eq(tasks.status, 'inbox'),
+          eq(tasks.planDate, ''),
+          isNull(tasks.planDate)
+        )
+      )
+    )
+    .orderBy(desc(tasks.priority), desc(tasks.createdAt))
     .limit(8);
 
   if (inboxTasks.length === 0) {
@@ -198,10 +309,11 @@ async function executeQueryInbox(
   }
 
   let msg = replyPrefix ? `💬 <i>${escapeHtml(replyPrefix)}</i>\n\n` : '';
-  msg += `📥 <b>Bandeja de entrada (${inboxTasks.length} pendientes):</b>\n\n`;
+  msg += `📥 <b>Bandeja de entrada (${inboxTasks.length} pendientes sin fecha):</b>\n\n`;
   for (let i = 0; i < inboxTasks.length; i++) {
     const t = inboxTasks[i];
-    msg += `${i + 1}. 📌 <b>${escapeHtml(t.title)}</b> (${escapeHtml(t.area)} | ${t.minutes}m)\n`;
+    const prio = t.priority === 3 ? '🔴' : t.priority === 2 ? '🟡' : '🟢';
+    msg += `${i + 1}. 📌 <b>${escapeHtml(t.title)}</b> (${escapeHtml(t.area)} | ${prio} | ${t.minutes}m)\n`;
   }
 
   await ctx.reply(msg, { parse_mode: 'HTML' });
@@ -340,7 +452,7 @@ export function createTelegramBot(token: string): Bot {
           `Tu cuenta de Enfoco está conectada y activa. Podés:\n` +
           `• Escribirme una tarea (ej: <i>«Llamar al contador mañana 15m»</i>)\n` +
           `• Mandarme una nota de voz 🎙️\n` +
-          `• Consultar <b>/hoy</b> o <b>/inbox</b>\n` +
+          `• Consultar <b>/pendientes</b> o <b>/hoy</b>\n` +
           `• Escribir <b>/help</b> para ver todas las funciones.`,
           { parse_mode: 'HTML' }
         );
@@ -362,6 +474,27 @@ export function createTelegramBot(token: string): Bot {
   // /help and /ayuda commands
   bot.command(['help', 'ayuda'], async (ctx) => {
     await ctx.reply(HELP_MESSAGE, { parse_mode: 'HTML' });
+  });
+
+  // /pendientes and /tareas commands
+  bot.command(['pendientes', 'tareas'], async (ctx) => {
+    const chatId = String(ctx.chat.id);
+    const [user] = await db
+      .select({ id: users.id, displayName: users.displayName })
+      .from(users)
+      .where(eq(users.telegramChatId, chatId))
+      .limit(1);
+
+    if (!user) {
+      await ctx.reply('🔒 Tu cuenta de Telegram no está vinculada a Enfoco. Conectala desde la sección Integraciones.');
+      return;
+    }
+
+    const todayStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }).format(new Date());
+
+    await executeQueryPending(ctx, user, todayStr);
   });
 
   // /hoy and /today commands
@@ -386,7 +519,7 @@ export function createTelegramBot(token: string): Bot {
   });
 
   // /inbox and /bandeja commands
-  bot.command(['inbox', 'bandeja', 'pendientes'], async (ctx) => {
+  bot.command(['inbox', 'bandeja'], async (ctx) => {
     const chatId = String(ctx.chat.id);
     const [user] = await db
       .select({ id: users.id, displayName: users.displayName })
@@ -639,6 +772,8 @@ export function createTelegramBot(token: string): Bot {
         await executeCreateTask(ctx, user, aiResult.task, aiResult.reply);
       } else if (aiResult.action === 'update' && lastTask && aiResult.updates) {
         await executeUpdateTask(ctx, user, lastTask, aiResult.updates, aiResult.reply);
+      } else if (aiResult.action === 'query_pending') {
+        await executeQueryPending(ctx, user, todayStr, aiResult.reply);
       } else if (aiResult.action === 'query_today') {
         await executeQueryToday(ctx, user, todayStr, aiResult.reply);
       } else if (aiResult.action === 'query_inbox') {
@@ -736,6 +871,11 @@ export function createTelegramBot(token: string): Bot {
               return;
             }
 
+            if (aiResult.action === 'query_pending') {
+              await executeQueryPending(ctx, user, todayStr, aiResult.reply);
+              return;
+            }
+
             if (aiResult.action === 'query_today') {
               await executeQueryToday(ctx, user, todayStr, aiResult.reply);
               return;
@@ -776,8 +916,8 @@ export function createTelegramBot(token: string): Bot {
           `👋 ¡Hola <b>${escapeHtml(user.displayName)}</b>!\n\n` +
           `¿En qué te puedo ayudar hoy? Podés pedirme:\n` +
           `• Guardar una tarea (ej: <i>«Llamar al banco hoy 15m #trabajo»</i>)\n` +
-          `• Preguntarme <i>«¿qué tengo para hoy?»</i>\n` +
-          `• Consultar tu <i>«bandeja»</i>\n\n` +
+          `• Preguntarme <i>«¿Hay pendientes?»</i> o <i>«¿Qué tengo para hoy?»</i>\n` +
+          `• Consultar <b>/pendientes</b> o tu <b>/inbox</b>\n\n` +
           `O escribir <b>/help</b> para ver todos los comandos.`,
           { parse_mode: 'HTML' }
         );
@@ -796,13 +936,19 @@ export function createTelegramBot(token: string): Bot {
         return;
       }
 
-      // Case A: Query Today
+      // Case A1: Query Pending (General)
+      if (intent.type === 'query_pending') {
+        await executeQueryPending(ctx, user, todayStr);
+        return;
+      }
+
+      // Case A2: Query Today
       if (intent.type === 'query_today') {
         await executeQueryToday(ctx, user, todayStr);
         return;
       }
 
-      // Case B: Query Inbox
+      // Case B: Query Inbox specifically
       if (intent.type === 'query_inbox') {
         await executeQueryInbox(ctx, user);
         return;

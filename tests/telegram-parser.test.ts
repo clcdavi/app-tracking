@@ -160,10 +160,16 @@ describe('Telegram Parser Tests', () => {
     assert.equal(detectTelegramIntent('como funciona', refDate).type, 'help');
   });
 
-  it('detects expanded queries for today and inbox', () => {
-    assert.equal(detectTelegramIntent('cuales son mis tareas', refDate).type, 'query_today');
+  it('detects expanded queries for today, pending, and inbox', () => {
+    assert.equal(detectTelegramIntent('que tengo hoy', refDate).type, 'query_today');
     assert.equal(detectTelegramIntent('que tengo que hacer hoy', refDate).type, 'query_today');
-    assert.equal(detectTelegramIntent('que tengo pendiente', refDate).type, 'query_inbox');
-    assert.equal(detectTelegramIntent('pendientes', refDate).type, 'query_inbox');
+
+    assert.equal(detectTelegramIntent('Hay pendientes?', refDate).type, 'query_pending');
+    assert.equal(detectTelegramIntent('que tengo pendiente', refDate).type, 'query_pending');
+    assert.equal(detectTelegramIntent('cuales son mis tareas', refDate).type, 'query_pending');
+    assert.equal(detectTelegramIntent('pendientes', refDate).type, 'query_pending');
+
+    assert.equal(detectTelegramIntent('que hay en la bandeja', refDate).type, 'query_inbox');
+    assert.equal(detectTelegramIntent('inbox', refDate).type, 'query_inbox');
   });
 });

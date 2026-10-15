@@ -1,5 +1,5 @@
 export interface GeminiActionResult {
-  action: 'create' | 'update' | 'query_today' | 'query_inbox' | 'complete' | 'delete' | 'chat';
+  action: 'create' | 'update' | 'query_today' | 'query_pending' | 'query_inbox' | 'complete' | 'delete' | 'chat';
   reply: string;
   task?: {
     title: string;
@@ -60,16 +60,17 @@ Contexto actual del usuario:
 
 REGLAS DE DECISIÓN DE ACCIONES:
 1. Si el usuario pide modificar o ajustar la tarea anterior (ej: "guardalo en proyectos", "ponelo para hoy", "que dure 1 hora", "cambiá la prioridad a alta", "cambiale el título a..."), la acción es "update".
-2. Si el usuario pide ver o consultar qué tiene ("¿qué tengo para hoy?", "mis tareas", "qué hay hoy", "¿cómo viene mi día?"), la acción es "query_today".
-3. Si el usuario pide ver pendientes sin planificar ("¿qué tengo en la bandeja?", "inbox", "pendientes"), la acción es "query_inbox".
-4. Si el usuario pide completar ("listo", "completalo", "ya lo terminé"), la acción es "complete".
-5. Si el usuario pide borrar o descartar ("borralo", "eliminalo", "cancelá eso"), la acción es "delete".
-6. Si describe un pendiente nuevo (ej: "Reunión con cliente mañana 45m"), la acción es "create".
-7. Si hace una pregunta o charla sobre productividad ("¿qué me recomendás hacer primero?", "¿cómo organizo mi día?"), la acción es "chat".
+2. Si el usuario pide ver tareas planificadas para hoy ("¿qué tengo para hoy?", "mis tareas de hoy", "plan de hoy", "¿cómo viene mi día?"), la acción es "query_today".
+3. Si el usuario pregunta de forma general por sus pendientes o tareas sin terminar ("¿hay pendientes?", "¿qué pendientes tengo?", "mis tareas", "pendientes", "¿qué tengo que hacer?"), la acción es "query_pending".
+4. Si el usuario pide ver específicamente la bandeja de entrada o inbox ("¿qué hay en la bandeja?", "inbox", "bandeja de entrada"), la acción es "query_inbox".
+5. Si el usuario pide completar ("listo", "completalo", "ya lo terminé"), la acción es "complete".
+6. Si el usuario pide borrar o descartar ("borralo", "eliminalo", "cancelá eso"), la acción es "delete".
+7. Si describe un pendiente nuevo (ej: "Reunión con cliente mañana 45m"), la acción es "create".
+8. Si hace una pregunta o charla sobre productividad ("¿qué me recomendás hacer primero?", "¿cómo organizo mi día?"), la acción es "chat".
 
 Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (sin bloques markdown ni explicaciones adicionales):
 {
-  "action": "create" | "update" | "query_today" | "query_inbox" | "complete" | "delete" | "chat",
+  "action": "create" | "update" | "query_today" | "query_pending" | "query_inbox" | "complete" | "delete" | "chat",
   "reply": "Mensaje cordial, claro y ejecutivo que le responderás al usuario por Telegram en español (máximo 2 a 3 oraciones, podés usar emojis).",
   "task": {
     "title": "título limpio sin etiquetas ni palabras de relleno",

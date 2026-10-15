@@ -12,6 +12,7 @@ export interface ParsedTelegramTask {
 
 export type TelegramIntent =
   | { type: 'query_today' }
+  | { type: 'query_pending' }
   | { type: 'query_inbox' }
   | { type: 'complete_last' }
   | { type: 'delete_last' }
@@ -217,22 +218,27 @@ export function detectTelegramIntent(rawText: string, referenceDate?: string): T
     return { type: 'help' };
   }
 
-  // 1. Query today: "¿qué tengo para hoy?", "mis tareas de hoy", "ver hoy", "plan de hoy"
+  // 1a. Query today: explicitly refers to today ("hoy", "today", "este día")
   if (
-    /^(?:que|que\s+es\s+lo\s+que|mostrar|ver|cual\s+es|cuales\s+son|como\s+viene)?\s*(?:tengo|hay|mis\s+tareas|el\s+plan|mi\s+dia|tareas)?\s*(?:para\s+hoy|hoy|de\s+hoy)$/i.test(norm) ||
-    /^(?:cuales\s+son\s+mis\s+tareas|que\s+tengo\s+que\s+hacer(\s+hoy)?|ver\s+mis\s+tareas|mis\s+tareas)$/i.test(norm) ||
-    /^(?:mis\s+)?tareas(\s+de\s+hoy)?$/i.test(norm) ||
-    /^(?:que\s+tengo\s+hoy|que\s+hay\s+hoy|ver\s+hoy|plan\s+de\s+hoy|agenda\s+de\s+hoy|resumen\s+de\s+hoy)$/i.test(norm)
+    /(?:para\s+hoy|de\s+hoy|\bhoy\b)/i.test(norm) &&
+    /(?:que\s+tengo|que\s+hay|que\s+hago|que\s+hacer|cuales\s+son|ver|mostrar|mis\s+tareas|tareas|el\s+plan|plan|agenda|resumen|como\s+viene)/i.test(norm)
   ) {
     return { type: 'query_today' };
   }
 
-  // 2. Query inbox: "¿qué tengo pendiente?", "¿qué hay en la bandeja?", "bandeja de entrada", "inbox", "pendientes"
+  // 1b. Query pending tasks (general): "hay pendientes?", "que pendientes tengo?", "cuales son mis tareas", "mis pendientes", "pendientes", etc.
   if (
-    /^(?:que\s+(?:tengo|hay)\s+)?(?:en\s+la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox|pendientes?)$/i.test(norm) ||
-    /^(?:mostrar|ver|listar)\s+(?:la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox|pendientes?)$/i.test(norm) ||
-    /^(?:mis\s+)?(bandeja|inbox|pendientes?)$/i.test(norm) ||
-    /^(?:que\s+tengo\s+pendiente|que\s+hay\s+pendiente|tareas\s+pendientes)$/i.test(norm)
+    /^(?:hay\s+pendientes|tengo\s+pendientes|que\s+pendientes\s+hay|que\s+pendientes\s+tengo|cuales\s+son\s+mis\s+pendientes|que\s+tengo\s+pendiente|que\s+hay\s+pendiente|mis\s+pendientes|pendientes|cuales\s+son\s+mis\s+tareas|que\s+tareas\s+tengo|ver\s+pendientes|ver\s+tareas|mis\s+tareas|tareas|que\s+tengo\s+que\s+hacer|que\s+hay\s+para\s+hacer)$/i.test(norm) ||
+    (/(?:pendientes|mis\s+tareas)/i.test(norm) && /(?:hay|cuales|ver|mostrar|listar|tengo|cuales\s+son)/i.test(norm))
+  ) {
+    return { type: 'query_pending' };
+  }
+
+  // 2. Query inbox: specifically refers to "bandeja" or "inbox"
+  if (
+    /^(?:que\s+(?:tengo|hay)\s+)?(?:en\s+la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox)$/i.test(norm) ||
+    /^(?:mostrar|ver|listar)\s+(?:la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox)$/i.test(norm) ||
+    /^(?:mi\s+)?(bandeja|inbox)$/i.test(norm)
   ) {
     return { type: 'query_inbox' };
   }
