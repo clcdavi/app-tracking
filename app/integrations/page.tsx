@@ -81,11 +81,28 @@ export default function IntegrationsPage() {
 
   async function copy(value: string, label: string) {
     try {
-      await navigator.clipboard.writeText(value);
+      if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = value;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!successful) {
+          throw new Error('execCommand failed');
+        }
+      }
       setCopied(label);
-      window.setTimeout(() => setCopied(''), 1800);
+      setError('');
+      window.setTimeout(() => setCopied(''), 2000);
     } catch {
-      setError('No se pudo copiar. Seleccioná y copiá el texto manualmente.');
+      setError('No se pudo copiar automáticamente. Por favor seleccioná y copiá el texto manualmente.');
     }
   }
 
@@ -162,7 +179,7 @@ export default function IntegrationsPage() {
   }
 
   const example = `curl -X POST '${endpoint}' \\
-  -H 'Authorization: Bearer TU_CLAVE_DE_ENFOCO' \\
+  -H 'Authorization: Bearer ${token || 'TU_CLAVE_DE_ENFOCO'}' \\
   -H 'Content-Type: application/json' \\
   -d '{
     "tasks": [{
@@ -315,11 +332,13 @@ export default function IntegrationsPage() {
                   <b>Copiá esta clave ahora</b>
                   <p>Enfoco no volverá a mostrarla. Guardala en el gestor de secretos de la otra app.</p>
                 </div>
-                <code>{token}</code>
-                <button className="outline-btn" onClick={() => void copy(token, 'token')}>
+                <code style={{ userSelect: 'all', WebkitUserSelect: 'all', cursor: 'pointer' }} onClick={() => void copy(token, 'token')} title="Clic para copiar">
+                  {token}
+                </code>
+                <button type="button" className="outline-btn" onClick={() => void copy(token, 'token')}>
                   {copied === 'token' ? <Check size={16}/> : <Copy size={16}/>} {copied === 'token' ? 'Copiada' : 'Copiar clave'}
                 </button>
-                <button className="token-dismiss" onClick={() => setToken('')}>Listo, ya la guardé</button>
+                <button type="button" className="token-dismiss" onClick={() => setToken('')}>Listo, ya la guardé</button>
               </div>
             )}
             <div className="security-note">
@@ -370,8 +389,19 @@ export default function IntegrationsPage() {
             <label className="field">
               Endpoint
               <div className="copy-field">
-                <code>{endpoint}</code>
-                <button className="icon-btn" onClick={() => void copy(endpoint, 'endpoint')} aria-label="Copiar endpoint">
+                <code
+                  style={{ userSelect: 'all', WebkitUserSelect: 'all', cursor: 'pointer' }}
+                  onClick={() => void copy(endpoint, 'endpoint')}
+                  title="Clic para copiar"
+                >
+                  {endpoint}
+                </code>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => void copy(endpoint, 'endpoint')}
+                  aria-label="Copiar endpoint"
+                >
                   {copied === 'endpoint' ? <Check size={16}/> : <Copy size={16}/>}
                 </button>
               </div>
@@ -385,8 +415,19 @@ export default function IntegrationsPage() {
                 <li>Las fechas usan <code>AAAA-MM-DD</code>. El máximo por solicitud es 100 KB.</li>
               </ul>
             </div>
-            <pre className="api-example"><code>{example}</code></pre>
-            <button className="outline-btn copy-example" onClick={() => void copy(example, 'example')}>
+            <pre
+              className="api-example"
+              style={{ userSelect: 'all', WebkitUserSelect: 'all', cursor: 'pointer' }}
+              onClick={() => void copy(example, 'example')}
+              title="Clic para copiar"
+            >
+              <code>{example}</code>
+            </pre>
+            <button
+              type="button"
+              className="outline-btn copy-example"
+              onClick={() => void copy(example, 'example')}
+            >
               {copied === 'example' ? <Check size={16}/> : <Copy size={16}/>} {copied === 'example' ? 'Ejemplo copiado' : 'Copiar ejemplo'}
             </button>
           </section>
