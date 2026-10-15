@@ -33,6 +33,7 @@ services:
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       TZ: America/Argentina/Buenos_Aires
       NODE_ENV: production
     healthcheck:
