@@ -15,6 +15,9 @@ export type TelegramIntent =
   | { type: 'query_inbox' }
   | { type: 'complete_last' }
   | { type: 'delete_last' }
+  | { type: 'greeting' }
+  | { type: 'thanks' }
+  | { type: 'help' }
   | {
       type: 'update_last';
       updates: {
@@ -199,20 +202,37 @@ export function detectTelegramIntent(rawText: string, referenceDate?: string): T
   const [y, m, d] = todayStr.split('-').map(Number);
   const tomorrowStr = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
 
+  // 0a. Greetings: "hola", "buen día", "buenas tardes", "buenas noches", "hey", "hola bot", etc.
+  if (/^(?:hola|buenas|buen\s+dia|buenos\s+dias|buenas\s+tardes|buenas\s+noches|hey|que\s+tal|hola\s+bot)(?:\s+como\s+estas|\s+que\s+tal)?$/i.test(norm)) {
+    return { type: 'greeting' };
+  }
+
+  // 0b. Thanks: "gracias", "muchas gracias", "joya", "genial", "excelente", "perfecto"
+  if (/^(?:gracias|muchas\s+gracias|muchisimas\s+gracias|joya|genial|excelente|perfecto|buenisimo|de\s+diez|ok\s+gracias)$/i.test(norm)) {
+    return { type: 'thanks' };
+  }
+
+  // 0c. Help: "ayuda", "como funciona", "que podes hacer", "comandos"
+  if (/^(?:ayuda|help|como\s+funciona|que\s+podes\s+hacer|que\s+haces|comandos|menu)$/i.test(norm)) {
+    return { type: 'help' };
+  }
+
   // 1. Query today: "¿qué tengo para hoy?", "mis tareas de hoy", "ver hoy", "plan de hoy"
   if (
-    /^(?:que|que\s+es\s+lo\s+que|mostrar|ver|cual\s+es|como\s+viene)?\s*(?:tengo|hay|mis\s+tareas|el\s+plan|mi\s+dia)?\s*(?:para\s+hoy|hoy|de\s+hoy)$/i.test(norm) ||
+    /^(?:que|que\s+es\s+lo\s+que|mostrar|ver|cual\s+es|cuales\s+son|como\s+viene)?\s*(?:tengo|hay|mis\s+tareas|el\s+plan|mi\s+dia|tareas)?\s*(?:para\s+hoy|hoy|de\s+hoy)$/i.test(norm) ||
+    /^(?:cuales\s+son\s+mis\s+tareas|que\s+tengo\s+que\s+hacer(\s+hoy)?|ver\s+mis\s+tareas|mis\s+tareas)$/i.test(norm) ||
     /^(?:mis\s+)?tareas(\s+de\s+hoy)?$/i.test(norm) ||
-    /^(?:que\s+tengo\s+hoy|que\s+hay\s+hoy|ver\s+hoy|plan\s+de\s+hoy)$/i.test(norm)
+    /^(?:que\s+tengo\s+hoy|que\s+hay\s+hoy|ver\s+hoy|plan\s+de\s+hoy|agenda\s+de\s+hoy|resumen\s+de\s+hoy)$/i.test(norm)
   ) {
     return { type: 'query_today' };
   }
 
   // 2. Query inbox: "¿qué tengo pendiente?", "¿qué hay en la bandeja?", "bandeja de entrada", "inbox", "pendientes"
   if (
-    /^(?:que\s+(?:tengo|hay)\s+)?(?:en\s+la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox|pendientes)$/i.test(norm) ||
-    /^(?:mostrar|ver|listar)\s+(?:la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox|pendientes)$/i.test(norm) ||
-    /^(bandeja|inbox|pendientes)$/i.test(norm)
+    /^(?:que\s+(?:tengo|hay)\s+)?(?:en\s+la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox|pendientes?)$/i.test(norm) ||
+    /^(?:mostrar|ver|listar)\s+(?:la\s+)?(bandeja|bandeja\s+de\s+entrada|inbox|pendientes?)$/i.test(norm) ||
+    /^(?:mis\s+)?(bandeja|inbox|pendientes?)$/i.test(norm) ||
+    /^(?:que\s+tengo\s+pendiente|que\s+hay\s+pendiente|tareas\s+pendientes)$/i.test(norm)
   ) {
     return { type: 'query_inbox' };
   }

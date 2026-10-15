@@ -146,4 +146,24 @@ describe('Telegram Parser Tests', () => {
     const d1 = detectTelegramIntent('borralo', refDate);
     assert.equal(d1.type, 'delete_last');
   });
+
+  it('detects conversational intent: greetings, thanks, and help', () => {
+    assert.equal(detectTelegramIntent('Hola', refDate).type, 'greeting');
+    assert.equal(detectTelegramIntent('buen día', refDate).type, 'greeting');
+    assert.equal(detectTelegramIntent('hola bot como estas', refDate).type, 'greeting');
+
+    assert.equal(detectTelegramIntent('gracias', refDate).type, 'thanks');
+    assert.equal(detectTelegramIntent('muchas gracias', refDate).type, 'thanks');
+    assert.equal(detectTelegramIntent('genial', refDate).type, 'thanks');
+
+    assert.equal(detectTelegramIntent('ayuda', refDate).type, 'help');
+    assert.equal(detectTelegramIntent('como funciona', refDate).type, 'help');
+  });
+
+  it('detects expanded queries for today and inbox', () => {
+    assert.equal(detectTelegramIntent('cuales son mis tareas', refDate).type, 'query_today');
+    assert.equal(detectTelegramIntent('que tengo que hacer hoy', refDate).type, 'query_today');
+    assert.equal(detectTelegramIntent('que tengo pendiente', refDate).type, 'query_inbox');
+    assert.equal(detectTelegramIntent('pendientes', refDate).type, 'query_inbox');
+  });
 });

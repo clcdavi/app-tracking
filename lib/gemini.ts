@@ -114,6 +114,7 @@ Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (sin
 
   const modelsToTry = [
     process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    'gemini-3.8-flash',
     'gemini-3.1-flash-lite',
   ];
 
@@ -198,6 +199,7 @@ Responde ÚNICAMENTE con un JSON array de objetos con este formato:
 
   const modelsToTry = [
     process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    'gemini-3.8-flash',
     'gemini-3.1-flash-lite',
   ];
 
