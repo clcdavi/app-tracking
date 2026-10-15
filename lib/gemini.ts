@@ -112,47 +112,55 @@ Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (sin
     return null;
   }
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemInstruction }],
+  const modelsToTry = [
+    process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+  ];
+
+  for (const model of modelsToTry) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        contents: [
-          {
-            role: 'user',
-            parts,
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemInstruction }],
           },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
+          contents: [
+            {
+              role: 'user',
+              parts,
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('[Gemini API Error]', response.status, errText);
-      return null;
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`[Gemini API Error with ${model}]`, response.status, errText);
+        continue;
+      }
+
+      const data = await response.json();
+      const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!candidateText) {
+        console.error(`[Gemini API] Respuesta vacía de ${model}:`, JSON.stringify(data));
+        continue;
+      }
+
+      const parsed = JSON.parse(candidateText) as GeminiActionResult;
+      return parsed;
+    } catch (err) {
+      console.error(`[Gemini API] Error procesando con ${model}:`, err);
     }
-
-    const data = await response.json();
-    const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) {
-      console.error('[Gemini API] Respuesta vacía de Gemini:', JSON.stringify(data));
-      return null;
-    }
-
-    const parsed = JSON.parse(candidateText) as GeminiActionResult;
-    return parsed;
-  } catch (err) {
-    console.error('[Gemini API] Error procesando con Gemini:', err);
-    return null;
   }
+
+  return null;
 }
