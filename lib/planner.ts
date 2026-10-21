@@ -28,11 +28,86 @@ export const areas = ['Personal', 'Trabajo', 'Estudio', 'Iglesia', 'Proyectos'] 
 
 export const states: Record<TaskStatus, string> = {
   inbox: 'Sin organizar',
-  todo: 'Pendiente',
+  todo: 'Por hacer',
   doing: 'En curso',
-  waiting: 'Esperando',
-  done: 'Completada',
+  waiting: 'En revisión',
+  done: 'Completado',
 };
+
+const AREA_PREFIXES: Record<string, string> = {
+  Personal: 'PER',
+  Trabajo: 'TRA',
+  Estudio: 'EST',
+  Iglesia: 'IGL',
+  Proyectos: 'PRO',
+};
+
+/**
+ * Generates a readable Jira-style issue key (e.g., 'TRA-104' or 'DEV-21')
+ * deterministically from the task's project/area and ID.
+ */
+export function taskKey(t: Pick<Task, 'id' | 'area' | 'project'>): string {
+  const rawPrefix = (t.project || t.area || 'ENF')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z]/g, '')
+    .toUpperCase();
+  const prefix =
+    rawPrefix.length >= 3
+      ? rawPrefix.slice(0, 3)
+      : AREA_PREFIXES[t.area] || 'ENF';
+
+  // Deterministic 2-3 digit number from task.id
+  let hash = 0;
+  for (let i = 0; i < t.id.length; i++) {
+    hash = (hash * 31 + t.id.charCodeAt(i)) >>> 0;
+  }
+  const num = (hash % 900) + 100;
+  return `${prefix}-${num}`;
+}
+
+export type ChecklistSummary = {
+  total: number;
+  done: number;
+  items: { index: number; text: string; checked: boolean }[];
+};
+
+/**
+ * Parses markdown checklist items (- [ ] or - [x]) from task notes.
+ */
+export function parseChecklist(notes: string): ChecklistSummary {
+  if (!notes) return { total: 0, done: 0, items: [] };
+  const lines = notes.split('\n');
+  const items: { index: number; text: string; checked: boolean }[] = [];
+  lines.forEach((line, idx) => {
+    const m = line.match(/^\s*[-*]\s*\[([ xX])\]\s*(.+)$/);
+    if (m) {
+      items.push({
+        index: idx,
+        checked: m[1].toLowerCase() === 'x',
+        text: m[2].trim(),
+      });
+    }
+  });
+  return {
+    total: items.length,
+    done: items.filter((i) => i.checked).length,
+    items,
+  };
+}
+
+/**
+ * Toggles a specific markdown checklist line inside task notes.
+ */
+export function toggleChecklistLine(notes: string, lineIndex: number): string {
+  const lines = notes.split('\n');
+  if (lineIndex < 0 || lineIndex >= lines.length) return notes;
+  lines[lineIndex] = lines[lineIndex].replace(
+    /^(\s*[-*]\s*\[)([ xX])(\]\s*.+)$/,
+    (_, p1, state, p3) => `${p1}${state.toLowerCase() === 'x' ? ' ' : 'x'}${p3}`
+  );
+  return lines.join('\n');
+}
 
 /**
  * Returns today's date string (YYYY-MM-DD) in the Buenos Aires timezone.

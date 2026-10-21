@@ -6,6 +6,16 @@ Aplicación de organización personal y planificación consciente del día a dí
 
 ## ✨ Funcionalidades Principales
 
+* 📋 **Espacio de Trabajo Estilo Jira Cloud**:
+  * **Barra Superior Global**: Búsqueda instantánea por clave (`TRA-104`), proyecto o título (atajo `/`), botón primario `+ Crear` (atajo `C`), acceso rápido a **Modo Enfoque (Pomodoro)**, auto-planificador IA (`⚡`) y alertas de vencimiento.
+  * **Barra Lateral de Espacios Colapsable**: Accesos directos a *Para ti (Mi día)*, *Bandeja de entrada*, *Favoritos (Top 3)*, *Necesita atención*, *Planes (7 días)* y **Espacios dedicados por Área** (*Mi espacio de Kanban*, *Personal*, *Trabajo*, *Estudio*, *Iglesia*, *Proyectos*) con mini-widget de capacidad diaria.
+  * **5 Vistas Horizontales por Espacio**:
+    1. **🌐 Resumen**: Dashboard ejecutivo con KPIs de estado, distribución porcentual y desglose por prioridad.
+    2. **🪟 Lista**: Tabla interactiva estilo *Jira Work Management* con ordenamiento por columna, edición en línea de estado, área y prioridad, y fila de creación rápida al pie.
+    3. **📊 Tablero Kanban**: Columnas con **Drag & Drop** (*Por hacer*, *En curso* con alerta de límite WIP, *En revisión*, *Completado* y *Bandeja* opcional), **Swimlanes / Agrupación** (*Ninguno*, *Área*, *Prioridad*, *Proyecto*), tarjetas con clave única (`PRO-104`) y creación rápida en línea dentro de cada columna.
+    4. **📅 Cronograma**: Planificador semanal de 7 días con Drag & Drop entre días + vista **Timeboxing horario** de la jornada.
+    5. **📈 Informes**: Métricas de cumplimiento, rachas de enfoque e historial de victorias.
+  * **Modal de Elemento de 2 Columnas con Checklist Interactivo**: Permite gestionar subtareas con casillas verificables (`- [ ]` / `- [x]`) y barra de progreso, o generarlas con un clic usando **Gemini AI**.
 * 🎯 **Planificación Consciente & Top 3**:
   * Selección diaria de hasta 3 prioridades clave con estrellas (`⭐`).
   * Cálculo de presupuesto diario en minutos (`daily_budget`) para no saturar tu jornada.

@@ -10,6 +10,9 @@ import {
   suggestions,
   newTask,
   generateUUID,
+  taskKey,
+  parseChecklist,
+  toggleChecklistLine,
   type Task,
 } from '../lib/planner';
 
@@ -139,5 +142,28 @@ describe('Planner Logic Tests', () => {
     assert.equal(updated.followUp, '2026-10-15');
     assert.equal(updated.project, 'Infraestructura');
     assert.equal(updated.notes, 'Requiere migración de esquemas en Oracle Cloud');
+  });
+
+  it('taskKey generates deterministic Jira-style keys from area or project', () => {
+    const t1 = { ...newTask('Test 1'), id: 'abc-123', area: 'Trabajo', project: '' };
+    assert.match(taskKey(t1), /^TRA-\d{3}$/);
+
+    const t2 = { ...newTask('Test 2'), id: 'abc-123', area: 'Trabajo', project: 'DevOps' };
+    assert.match(taskKey(t2), /^DEV-\d{3}$/);
+    assert.equal(taskKey(t2), taskKey(t2));
+  });
+
+  it('parseChecklist and toggleChecklistLine manage interactive Jira subtasks in notes', () => {
+    const notes = 'Contexto inicial\n- [ ] Configurar base de datos (20 min)\n- [x] Crear esquema inicial\n- [ ] Probar endpoints';
+    const parsed = parseChecklist(notes);
+    assert.equal(parsed.total, 3);
+    assert.equal(parsed.done, 1);
+    assert.equal(parsed.items[0].checked, false);
+    assert.equal(parsed.items[1].checked, true);
+
+    const toggled = toggleChecklistLine(notes, parsed.items[0].index);
+    const reParsed = parseChecklist(toggled);
+    assert.equal(reParsed.done, 2);
+    assert.equal(reParsed.items[0].checked, true);
   });
 });
