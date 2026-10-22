@@ -145,12 +145,16 @@ describe('Planner Logic Tests', () => {
   });
 
   it('taskKey generates deterministic Jira-style keys from area or project', () => {
-    const t1 = { ...newTask('Test 1'), id: 'abc-123', area: 'Trabajo', project: '' };
+    const t1 = { ...newTask('Test 1'), id: 'abc-123', area: 'Trabajo', project: '', created: '2026-10-01T10:00:00Z' };
     assert.match(taskKey(t1), /^TRA-\d{3}$/);
 
-    const t2 = { ...newTask('Test 2'), id: 'abc-123', area: 'Trabajo', project: 'DevOps' };
+    const t2 = { ...newTask('Test 2'), id: 'def-456', area: 'Trabajo', project: 'DevOps', created: '2026-10-02T10:00:00Z' };
     assert.match(taskKey(t2), /^DEV-\d{3}$/);
     assert.equal(taskKey(t2), taskKey(t2));
+
+    // When allTasks is passed, produces sequential Jira keys (1, 2, ...)
+    assert.equal(taskKey(t1, [t2, t1]), 'TRA-1');
+    assert.equal(taskKey(t2, [t2, t1]), 'DEV-2');
   });
 
   it('parseChecklist and toggleChecklistLine manage interactive Jira subtasks in notes', () => {

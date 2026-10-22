@@ -25,6 +25,9 @@ import {
   Calendar,
   Volume2,
   VolumeX,
+  Moon,
+  Sun,
+  Palette,
 } from 'lucide-react';
 
 interface SettingsDialogProps {
@@ -85,27 +88,73 @@ export function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white p-6 rounded-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto jira-modal p-6 rounded-xl">
         <DialogHeader className="mb-4">
-          <DialogTitle className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-2">
             Ajustes y Personalización
           </DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
-            Configurá tu jornada, el temporizador de enfoque y tus recordatorios automáticos de Telegram.
+          <DialogDescription className="text-sm jira-text-subtle">
+            Configurá el tema visual de Jira, tu jornada, el temporizador Pomodoro y tus avisos de Telegram.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* SECCIÓN 0: TEMA VISUAL (OSCURO / CLARO JIRA) */}
+          <div className="jira-panel-card p-4 space-y-3">
+            <div className="flex items-center gap-2 font-semibold text-sm">
+              <Palette size={17} className="text-[#579dff]" />
+              <span>Apariencia del Espacio (Tema Jira)</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, theme: 'dark' })}
+                className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                  form.theme === 'dark'
+                    ? 'border-[#579dff] bg-[#579dff]/15 ring-1 ring-[#579dff]'
+                    : 'border-[var(--j-border)] hover:bg-[var(--j-bg-surface-hover)]'
+                }`}
+              >
+                <span className="w-8 h-8 rounded-md bg-[#1d2125] border border-[#38414a] text-[#579dff] grid place-items-center shrink-0">
+                  <Moon size={16} />
+                </span>
+                <div>
+                  <div className="text-xs font-bold">Tema Oscuro (Jira Dark)</div>
+                  <div className="text-[11px] jira-text-subtle">Contraste profundo descanso visual</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, theme: 'light' })}
+                className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                  form.theme === 'light'
+                    ? 'border-[#0c66e4] bg-[#579dff]/15 ring-1 ring-[#0c66e4]'
+                    : 'border-[var(--j-border)] hover:bg-[var(--j-bg-surface-hover)]'
+                }`}
+              >
+                <span className="w-8 h-8 rounded-md bg-[#f7f8f9] border border-[#dcdfe4] text-[#0c66e4] grid place-items-center shrink-0">
+                  <Sun size={16} />
+                </span>
+                <div>
+                  <div className="text-xs font-bold">Tema Claro (Jira Light)</div>
+                  <div className="text-[11px] jira-text-subtle">Fondo limpio y luminoso</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* SECCIÓN 1: JORNADA Y PLANIFICACIÓN */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-4">
-            <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-              <Calendar size={17} className="text-blue-600" />
+          <div className="jira-panel-card p-4 space-y-4">
+            <div className="flex items-center gap-2 font-semibold text-sm">
+              <Calendar size={17} className="text-[#579dff]" />
               <span>Jornada y Planificación</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                <label className="text-xs font-semibold jira-text-subtle mb-1 block">
                   Presupuesto diario por defecto
                 </label>
                 <div className="flex items-center gap-2">
@@ -114,13 +163,13 @@ export function SettingsDialog({
                     min={15}
                     max={1440}
                     step={15}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                    className="jira-input w-full px-3 py-1.5 text-sm"
                     value={form.dailyBudget}
                     onChange={(e) =>
                       setForm({ ...form, dailyBudget: Math.max(15, parseInt(e.target.value) || 120) })
                     }
                   />
-                  <span className="text-xs text-slate-500 whitespace-nowrap">minutos</span>
+                  <span className="text-xs jira-text-subtle whitespace-nowrap">minutos</span>
                 </div>
                 <div className="flex gap-1.5 mt-2">
                   {[60, 120, 240, 480].map((mins) => (
@@ -130,8 +179,8 @@ export function SettingsDialog({
                       onClick={() => setForm({ ...form, dailyBudget: mins })}
                       className={`text-xs px-2 py-0.5 rounded border transition-colors ${
                         form.dailyBudget === mins
-                          ? 'bg-blue-600 text-white border-blue-600 font-medium'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#579dff] text-[#1d2125] border-[#579dff] font-bold'
+                          : 'border-[var(--j-border)] jira-text-subtle hover:bg-[var(--j-bg-surface-hover)]'
                       }`}
                     >
                       {mins / 60}h
@@ -141,35 +190,35 @@ export function SettingsDialog({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                <label className="text-xs font-semibold jira-text-subtle mb-1 block">
                   Hora de inicio de jornada
                 </label>
                 <div className="flex items-center gap-2">
-                  <Clock size={16} className="text-slate-400" />
+                  <Clock size={16} className="jira-text-subtle" />
                   <input
                     type="time"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                    className="jira-input w-full px-3 py-1.5 text-sm"
                     value={form.workdayStart}
                     onChange={(e) => setForm({ ...form, workdayStart: e.target.value })}
                   />
                 </div>
-                <span className="text-[11px] text-slate-400 mt-1 block">
+                <span className="text-[11px] jira-text-subtle mt-1 block">
                   Se usa como punto de partida en el Timeboxing visual.
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[var(--j-border)]">
               <div>
-                <label className="text-xs font-medium text-slate-600 mb-1 block">
-                  Área por defecto
+                <label className="text-xs font-medium jira-text-subtle mb-1 block">
+                  Espacio / Área por defecto
                 </label>
                 <select
                   value={form.defaultArea}
                   onChange={(e) =>
                     setForm({ ...form, defaultArea: e.target.value as UserSettings['defaultArea'] })
                   }
-                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                  className="jira-input w-full px-2.5 py-1.5 text-xs"
                 >
                   {AREA_OPTIONS.map((a) => (
                     <option key={a} value={a}>
@@ -180,8 +229,8 @@ export function SettingsDialog({
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-600 mb-1 block">
-                  Duración estándar
+                <label className="text-xs font-medium jira-text-subtle mb-1 block">
+                  Duración estándar (min)
                 </label>
                 <input
                   type="number"
@@ -192,12 +241,12 @@ export function SettingsDialog({
                   onChange={(e) =>
                     setForm({ ...form, defaultMinutes: Math.max(5, parseInt(e.target.value) || 30) })
                   }
-                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                  className="jira-input w-full px-2.5 py-1.5 text-xs"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-600 mb-1 block">
+                <label className="text-xs font-medium jira-text-subtle mb-1 block">
                   Prioridad estándar
                 </label>
                 <select
@@ -208,7 +257,7 @@ export function SettingsDialog({
                       defaultPriority: Number(e.target.value) as UserSettings['defaultPriority'],
                     })
                   }
-                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                  className="jira-input w-full px-2.5 py-1.5 text-xs"
                 >
                   <option value={1}>1 - Baja</option>
                   <option value={2}>2 - Media</option>
@@ -219,15 +268,15 @@ export function SettingsDialog({
           </div>
 
           {/* SECCIÓN 2: MODO ENFOQUE (POMODORO) */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-4">
-            <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-              <Timer size={17} className="text-blue-600" />
+          <div className="jira-panel-card p-4 space-y-4">
+            <div className="flex items-center gap-2 font-semibold text-sm">
+              <Timer size={17} className="text-[#579dff]" />
               <span>Modo Enfoque (Pomodoro)</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                <label className="text-xs font-semibold jira-text-subtle mb-1 block">
                   Bloque de Enfoque (minutos)
                 </label>
                 <input
@@ -235,7 +284,7 @@ export function SettingsDialog({
                   min={5}
                   max={120}
                   step={5}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                  className="jira-input w-full px-3 py-1.5 text-sm"
                   value={form.focusMinutes}
                   onChange={(e) =>
                     setForm({ ...form, focusMinutes: Math.max(5, parseInt(e.target.value) || 25) })
@@ -244,14 +293,14 @@ export function SettingsDialog({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                <label className="text-xs font-semibold jira-text-subtle mb-1 block">
                   Descanso corto (minutos)
                 </label>
                 <input
                   type="number"
                   min={1}
                   max={30}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                  className="jira-input w-full px-3 py-1.5 text-sm"
                   value={form.breakMinutes}
                   onChange={(e) =>
                     setForm({ ...form, breakMinutes: Math.max(1, parseInt(e.target.value) || 5) })
@@ -260,16 +309,16 @@ export function SettingsDialog({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-between pt-2 border-t border-[var(--j-border)]">
               <div className="flex items-center gap-2">
                 {form.focusSound ? (
-                  <Volume2 size={16} className="text-blue-600" />
+                  <Volume2 size={16} className="text-[#579dff]" />
                 ) : (
-                  <VolumeX size={16} className="text-slate-400" />
+                  <VolumeX size={16} className="jira-text-subtle" />
                 )}
                 <div>
-                  <div className="text-xs font-semibold text-slate-700">Sonido al terminar bloque</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs font-semibold">Sonido al terminar bloque</div>
+                  <div className="text-[11px] jira-text-subtle">
                     Emite un aviso sonoro suave cuando expira el temporizador
                   </div>
                 </div>
@@ -282,23 +331,23 @@ export function SettingsDialog({
           </div>
 
           {/* SECCIÓN 3: NOTIFICACIONES PROACTIVAS DE TELEGRAM */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-4">
+          <div className="jira-panel-card p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-                <Bell size={17} className="text-blue-600" />
+              <div className="flex items-center gap-2 font-semibold text-sm">
+                <Bell size={17} className="text-[#579dff]" />
                 <span>Notificaciones Proactivas (Telegram)</span>
               </div>
-              <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[11px] bg-[#579dff]/15 text-[#579dff] px-2 py-0.5 rounded-full font-medium">
                 Horario Bs. As.
               </span>
             </div>
 
             {/* Briefing Matutino */}
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
+            <div className="p-3 rounded-lg border border-[var(--j-border)] bg-[var(--j-bg-sunken)] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-800">☀️ Briefing Matutino</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs font-semibold">☀️ Briefing Matutino</div>
+                  <div className="text-[11px] jira-text-subtle">
                     Tu plan del día, prioridades Top 3 y capacidad disponible.
                   </div>
                 </div>
@@ -314,9 +363,9 @@ export function SettingsDialog({
               </div>
 
               {form.morningBriefing.enabled && (
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--j-border)] gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-600 font-medium">Hora de envío:</span>
+                    <span className="text-xs jira-text-subtle font-medium">Hora de envío:</span>
                     <input
                       type="time"
                       value={form.morningBriefing.time}
@@ -326,14 +375,14 @@ export function SettingsDialog({
                           morningBriefing: { ...form.morningBriefing, time: e.target.value },
                         })
                       }
-                      className="border border-slate-300 rounded px-2 py-0.5 text-xs"
+                      className="jira-input px-2 py-0.5 text-xs"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => testNotification('briefing')}
                     disabled={testingType !== null}
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition-colors font-medium disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#579dff] bg-[#579dff]/15 hover:bg-[#579dff]/25 px-2.5 py-1 rounded transition-colors font-semibold disabled:opacity-50"
                   >
                     {testingType === 'briefing' ? (
                       <Loader2 size={13} className="animate-spin" />
@@ -347,11 +396,11 @@ export function SettingsDialog({
             </div>
 
             {/* Revisión Vespertina */}
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
+            <div className="p-3 rounded-lg border border-[var(--j-border)] bg-[var(--j-bg-sunken)] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-800">🌙 Revisión Vespertina</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs font-semibold">🌙 Revisión Vespertina</div>
+                  <div className="text-[11px] jira-text-subtle">
                     Balance de tareas completadas y botones rápidos para posponer pendientes.
                   </div>
                 </div>
@@ -367,9 +416,9 @@ export function SettingsDialog({
               </div>
 
               {form.eveningReview.enabled && (
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--j-border)] gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-600 font-medium">Hora de envío:</span>
+                    <span className="text-xs jira-text-subtle font-medium">Hora de envío:</span>
                     <input
                       type="time"
                       value={form.eveningReview.time}
@@ -379,14 +428,14 @@ export function SettingsDialog({
                           eveningReview: { ...form.eveningReview, time: e.target.value },
                         })
                       }
-                      className="border border-slate-300 rounded px-2 py-0.5 text-xs"
+                      className="jira-input px-2 py-0.5 text-xs"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => testNotification('review')}
                     disabled={testingType !== null}
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition-colors font-medium disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#579dff] bg-[#579dff]/15 hover:bg-[#579dff]/25 px-2.5 py-1 rounded transition-colors font-semibold disabled:opacity-50"
                   >
                     {testingType === 'review' ? (
                       <Loader2 size={13} className="animate-spin" />
@@ -400,11 +449,11 @@ export function SettingsDialog({
             </div>
 
             {/* Recordatorio de Vencimientos */}
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
+            <div className="p-3 rounded-lg border border-[var(--j-border)] bg-[var(--j-bg-sunken)] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-800">⚠️ Vencimientos y Seguimientos</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs font-semibold">⚠️ Vencimientos y Seguimientos</div>
+                  <div className="text-[11px] jira-text-subtle">
                     Alerta cuando hay tareas con fecha límite hoy o vencidas.
                   </div>
                 </div>
@@ -420,9 +469,9 @@ export function SettingsDialog({
               </div>
 
               {form.deadlineReminder.enabled && (
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--j-border)] gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-600 font-medium">Hora de envío:</span>
+                    <span className="text-xs jira-text-subtle font-medium">Hora de envío:</span>
                     <input
                       type="time"
                       value={form.deadlineReminder.time}
@@ -432,14 +481,14 @@ export function SettingsDialog({
                           deadlineReminder: { ...form.deadlineReminder, time: e.target.value },
                         })
                       }
-                      className="border border-slate-300 rounded px-2 py-0.5 text-xs"
+                      className="jira-input px-2 py-0.5 text-xs"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => testNotification('deadline')}
                     disabled={testingType !== null}
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded transition-colors font-medium disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#579dff] bg-[#579dff]/15 hover:bg-[#579dff]/25 px-2.5 py-1 rounded transition-colors font-semibold disabled:opacity-50"
                   >
                     {testingType === 'deadline' ? (
                       <Loader2 size={13} className="animate-spin" />
@@ -454,15 +503,15 @@ export function SettingsDialog({
           </div>
 
           {/* SECCIÓN 4: INTELIGENCIA ARTIFICIAL GEMINI */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+          <div className="jira-panel-card p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles size={17} className="text-blue-600" />
+                <Sparkles size={17} className="text-[#579dff]" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-800">
+                  <div className="text-xs font-semibold">
                     Estimación inteligente con Gemini AI
                   </div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-[11px] jira-text-subtle">
                     Sugerir automáticamente duración, área y prioridad al capturar notas por voz o texto.
                   </div>
                 </div>
@@ -475,12 +524,12 @@ export function SettingsDialog({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-[var(--j-border)]">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 font-medium rounded-lg hover:bg-slate-100 transition-colors"
+            className="jira-btn-subtle px-4 py-2"
           >
             Cancelar
           </button>
@@ -488,7 +537,7 @@ export function SettingsDialog({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
+            className="jira-create-btn px-5"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             {saving ? 'Guardando...' : 'Guardar ajustes'}

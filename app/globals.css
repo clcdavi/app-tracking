@@ -114,8 +114,54 @@
 .task-main strong{font-size:16px}.task-meta{font-size:14px}.area-pill{font-size:12px}.capacity-caption,.capacity-warning,.budget-label{font-size:14px!important}.focus-reason{font-size:14px;line-height:1.45}.focus-bottom,.complete-btn{font-size:14px}.candidate small{font-size:14px;line-height:1.4}.candidate b{font-size:16px}
 
 /* ============================================================================
-   JIRA CLOUD WORKSPACE DESIGN SYSTEM (Atlassian Light Theme)
+   JIRA CLOUD WORKSPACE DESIGN SYSTEM (Atlassian Dark & Light Theme Tokens)
    ============================================================================ */
+
+.jira-shell,
+.jira-modal {
+  /* Default: Jira Light Theme */
+  --j-bg-canvas: #ffffff;
+  --j-bg-sidebar: #f7f8f9;
+  --j-bg-sunken: #f1f2f4;
+  --j-bg-surface: #ffffff;
+  --j-bg-surface-hover: #f7f8f9;
+  --j-bg-selected: #e9f2ff;
+  --j-border: #dcdfe4;
+  --j-border-input: #8590a2;
+  --j-text: #172b4d;
+  --j-text-subtle: #44546f;
+  --j-text-muted: #626f86;
+  --j-primary: #0c66e4;
+  --j-primary-hover: #0055cc;
+  --j-primary-text: #ffffff;
+  --j-active-text: #0c66e4;
+  --j-card-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  --j-card-shadow-hover: 0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+}
+
+.dark .jira-shell,
+.jira-shell.theme-dark,
+.dark .jira-modal {
+  /* Jira Cloud Dark Theme (exact match to screenshot) */
+  --j-bg-canvas: #1d2125;
+  --j-bg-sidebar: #1d2125;
+  --j-bg-sunken: #161a1d;
+  --j-bg-surface: #22272b;
+  --j-bg-surface-hover: #282e33;
+  --j-bg-selected: #1c2b41;
+  --j-border: #2c333a;
+  --j-border-input: #454f59;
+  --j-text: #dee4ea;
+  --j-text-subtle: #9fadbc;
+  --j-text-muted: #738496;
+  --j-primary: #579dff;
+  --j-primary-hover: #85b8ff;
+  --j-primary-text: #1d2125;
+  --j-active-text: #579dff;
+  --j-card-shadow: 0 1px 1px rgba(3, 4, 4, 0.5), 0 0 1px rgba(3, 4, 4, 0.5);
+  --j-card-shadow-hover: 0 4px 8px -2px rgba(3, 4, 4, 0.6), 0 0 1px rgba(3, 4, 4, 0.6);
+  color-scheme: dark;
+}
 
 .jira-shell {
   display: flex;
@@ -123,21 +169,56 @@
   height: 100dvh;
   width: 100vw;
   overflow: hidden;
-  background: #ffffff;
-  color: #172b4d;
+  background: var(--j-bg-canvas);
+  color: var(--j-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
 }
 
-/* Top Global Navigation Bar (Atlassian 56px header) */
+.jira-modal {
+  background: var(--j-bg-surface) !important;
+  color: var(--j-text) !important;
+  border: 1px solid var(--j-border) !important;
+}
+
+.jira-panel-card {
+  background: var(--j-bg-surface);
+  color: var(--j-text);
+  border: 1px solid var(--j-border);
+  border-radius: 10px;
+}
+
+.jira-text-subtle {
+  color: var(--j-text-subtle);
+}
+
+.jira-track-bar {
+  background: var(--j-bg-sunken);
+}
+
+.jira-input {
+  background: var(--j-bg-sunken);
+  color: var(--j-text);
+  border: 1px solid var(--j-border-input);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.jira-input:focus {
+  border-color: var(--j-primary);
+  box-shadow: 0 0 0 1px var(--j-primary);
+}
+
+/* Top Global Navigation Bar (Atlassian 48-56px header) */
 .jira-topnav {
-  height: 56px;
-  min-height: 56px;
+  height: 52px;
+  min-height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  background: #ffffff;
-  border-bottom: 1px solid #dcdfe4;
+  padding: 0 14px;
+  background: var(--j-bg-canvas);
+  border-bottom: 1px solid var(--j-border);
   z-index: 40;
   gap: 12px;
 }
@@ -145,7 +226,7 @@
 .jira-topnav-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -154,28 +235,29 @@
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  font-size: 18px;
-  color: #172b4d;
-  letter-spacing: -0.4px;
+  font-size: 16px;
+  color: var(--j-text);
+  letter-spacing: -0.3px;
   padding: 4px 8px;
   border-radius: 6px;
+  background: transparent;
+  border: 0;
   text-decoration: none;
   user-select: none;
 }
 
 .jira-brand:hover {
-  background: #f1f2f4;
+  background: var(--j-bg-surface-hover);
 }
 
 .jira-brand-logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #0c66e4 0%, #2684ff 100%);
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: #0c66e4;
   color: #ffffff;
   display: grid;
   place-items: center;
-  box-shadow: 0 1px 3px rgba(12, 102, 228, 0.3);
 }
 
 .jira-topnav-center {
@@ -183,7 +265,7 @@
   align-items: center;
   gap: 8px;
   flex: 1;
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
 }
 
@@ -192,18 +274,18 @@
   align-items: center;
   gap: 8px;
   flex: 1;
-  height: 34px;
+  height: 32px;
   padding: 0 10px;
-  border: 1px solid #8590a2;
+  border: 1px solid var(--j-border-input);
   border-radius: 6px;
-  background: #ffffff;
-  color: #44546f;
+  background: var(--j-bg-canvas);
+  color: var(--j-text-subtle);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .jira-global-search:focus-within {
-  border-color: #0c66e4;
-  box-shadow: 0 0 0 1px #0c66e4;
+  border-color: var(--j-primary);
+  box-shadow: 0 0 0 1px var(--j-primary);
 }
 
 .jira-global-search input {
@@ -212,23 +294,23 @@
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 14px;
-  color: #172b4d;
+  font-size: 13px;
+  color: var(--j-text);
 }
 
 .jira-global-search input::placeholder {
-  color: #626f86;
+  color: var(--j-text-subtle);
 }
 
 .jira-create-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  background: #0c66e4;
-  color: #ffffff;
-  font-size: 14px;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--j-primary);
+  color: var(--j-primary-text);
+  font-size: 13px;
   font-weight: 600;
   border: 0;
   border-radius: 4px;
@@ -238,7 +320,7 @@
 }
 
 .jira-create-btn:hover {
-  background: #0055cc;
+  background: var(--j-primary-hover);
 }
 
 .jira-topnav-right {
@@ -253,41 +335,44 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
-  color: #44546f;
-  transition: background 0.12s, color 0.12s;
+  color: var(--j-text-subtle);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .jira-icon-btn:hover {
-  background: #f1f2f4;
-  color: #172b4d;
+  background: var(--j-bg-surface-hover);
+  color: var(--j-text);
+}
+
+.jira-icon-btn.is-bordered {
+  border-color: var(--j-border);
 }
 
 .jira-icon-btn.is-active {
-  background: #e9f2ff;
-  color: #0c66e4;
+  background: var(--j-bg-selected);
+  color: var(--j-active-text);
 }
 
 .jira-badge-dot {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
   border-radius: 999px;
-  background: #c9372c;
+  background: #0c66e4;
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #fff;
 }
 
 /* Body Layout (Sidebar + Main Workspace) */
@@ -300,10 +385,10 @@
 
 /* Left Sidebar */
 .jira-sidebar {
-  width: 248px;
-  min-width: 248px;
-  background: #f7f8f9;
-  border-right: 1px solid #dcdfe4;
+  width: 240px;
+  min-width: 240px;
+  background: var(--j-bg-sidebar);
+  border-right: 1px solid var(--j-border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -321,7 +406,7 @@
 }
 
 .jira-nav-section {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .jira-nav-header {
@@ -331,9 +416,7 @@
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #626f86;
+  color: var(--j-text-muted);
 }
 
 .jira-nav-item {
@@ -345,8 +428,8 @@
   border-radius: 6px;
   border: 0;
   background: transparent;
-  color: #172b4d;
-  font-size: 14px;
+  color: var(--j-text-subtle);
+  font-size: 13px;
   font-weight: 500;
   text-align: left;
   text-decoration: none;
@@ -355,12 +438,13 @@
 }
 
 .jira-nav-item:hover {
-  background: #091e420f;
+  background: var(--j-bg-surface-hover);
+  color: var(--j-text);
 }
 
 .jira-nav-item.is-active {
-  background: #e9f2ff;
-  color: #0c66e4;
+  background: var(--j-bg-selected);
+  color: var(--j-active-text);
   font-weight: 600;
 }
 
@@ -371,7 +455,7 @@
   top: 6px;
   bottom: 6px;
   width: 3px;
-  background: #0c66e4;
+  background: var(--j-active-text);
   border-radius: 0 3px 3px 0;
 }
 
@@ -381,13 +465,13 @@
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 999px;
-  background: #091e420f;
-  color: #44546f;
+  background: var(--j-bg-sunken);
+  color: var(--j-text-subtle);
 }
 
 .jira-nav-item.is-active .jira-nav-count {
-  background: #cce0ff;
-  color: #0c66e4;
+  background: rgba(87, 157, 255, 0.2);
+  color: var(--j-active-text);
 }
 
 .jira-space-avatar {
@@ -408,15 +492,15 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--j-bg-canvas);
   overflow: hidden;
 }
 
 /* Space Header & View Switcher Tabs */
 .jira-space-header {
-  padding: 16px 24px 0;
-  border-bottom: 1px solid #dcdfe4;
-  background: #ffffff;
+  padding: 14px 24px 0;
+  border-bottom: 1px solid var(--j-border);
+  background: var(--j-bg-canvas);
   flex-shrink: 0;
 }
 
@@ -425,13 +509,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .jira-space-title-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -440,7 +524,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #626f86;
+  color: var(--j-text-subtle);
 }
 
 .jira-space-title {
@@ -449,14 +533,14 @@
   gap: 10px;
   font-size: 20px;
   font-weight: 600;
-  color: #172b4d;
+  color: var(--j-text);
   letter-spacing: -0.3px;
 }
 
 .jira-space-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -467,24 +551,23 @@
   height: 32px;
   padding: 0 10px;
   border-radius: 4px;
-  border: 1px solid #dcdfe4;
-  background: #ffffff;
-  color: #44546f;
+  border: 1px solid var(--j-border-input);
+  background: var(--j-bg-canvas);
+  color: var(--j-text-subtle);
   font-size: 13px;
   font-weight: 500;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
 .jira-btn-subtle:hover {
-  background: #f7f8f9;
-  border-color: #b3b9c4;
-  color: #172b4d;
+  background: var(--j-bg-surface-hover);
+  color: var(--j-text);
 }
 
 .jira-btn-subtle.is-active {
-  background: #e9f2ff;
-  border-color: #0c66e4;
-  color: #0c66e4;
+  background: var(--j-bg-selected);
+  border-color: var(--j-primary);
+  color: var(--j-active-text);
   font-weight: 600;
 }
 
@@ -492,7 +575,7 @@
 .jira-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   overflow-x: auto;
 }
 
@@ -500,12 +583,12 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 12px 10px;
+  gap: 6px;
+  padding: 7px 12px 9px;
   border: 0;
   background: transparent;
-  color: #44546f;
-  font-size: 14px;
+  color: var(--j-text-subtle);
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   border-radius: 4px 4px 0 0;
@@ -513,12 +596,12 @@
 }
 
 .jira-tab:hover {
-  background: #f1f2f4;
-  color: #172b4d;
+  background: var(--j-bg-surface-hover);
+  color: var(--j-text);
 }
 
 .jira-tab.is-active {
-  color: #0c66e4;
+  color: var(--j-active-text);
   font-weight: 600;
 }
 
@@ -528,9 +611,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  background: #0c66e4;
-  border-radius: 3px 3px 0 0;
+  height: 2px;
+  background: var(--j-active-text);
+  border-radius: 2px 2px 0 0;
 }
 
 /* Sub-Toolbar (Search board, Avatar filter, Filter, Group by) */
@@ -539,8 +622,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 24px;
-  background: #ffffff;
+  padding: 14px 24px 12px;
+  background: var(--j-bg-canvas);
   flex-shrink: 0;
   flex-wrap: wrap;
 }
@@ -558,19 +641,19 @@
   align-items: center;
   gap: 6px;
   height: 32px;
-  width: 184px;
+  width: 176px;
   padding: 0 10px;
-  border: 1px solid #8590a2;
+  border: 1px solid var(--j-border-input);
   border-radius: 4px;
-  background: #ffffff;
-  color: #626f86;
+  background: var(--j-bg-canvas);
+  color: var(--j-text-subtle);
   transition: width 0.15s, border-color 0.15s;
 }
 
 .jira-board-search:focus-within {
-  width: 230px;
-  border-color: #0c66e4;
-  box-shadow: 0 0 0 1px #0c66e4;
+  width: 220px;
+  border-color: var(--j-primary);
+  box-shadow: 0 0 0 1px var(--j-primary);
 }
 
 .jira-board-search input {
@@ -579,17 +662,21 @@
   outline: none;
   background: transparent;
   font-size: 13px;
-  color: #172b4d;
+  color: var(--j-text);
+}
+
+.jira-board-search input::placeholder {
+  color: var(--j-text-subtle);
 }
 
 .jira-avatar-filter {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  border: 2px solid transparent;
-  background: #0052cc;
+  border: 2px solid var(--j-bg-canvas);
+  background: #e56910;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   display: inline-grid;
   place-items: center;
@@ -597,7 +684,7 @@
 }
 
 .jira-avatar-filter.is-active {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0c66e4;
+  box-shadow: 0 0 0 2px var(--j-primary);
 }
 
 /* Scrollable View Canvas */
@@ -611,28 +698,26 @@
 /* Kanban Board Columns */
 .jira-board {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 12px;
-  min-height: calc(100dvh - 210px);
-  padding-bottom: 12px;
+  padding-bottom: 16px;
 }
 
 .jira-column {
-  flex: 1;
-  min-width: 272px;
-  max-width: 350px;
-  background: #f7f8f9;
+  width: 280px;
+  min-width: 280px;
+  max-width: 320px;
+  background: var(--j-bg-sunken);
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--j-border);
   display: flex;
   flex-direction: column;
-  max-height: 100%;
   transition: background 0.15s, border-color 0.15s;
 }
 
 .jira-column.is-drag-over {
-  background: #e9f2ff;
-  border-color: #0c66e4;
+  background: var(--j-bg-selected);
+  border-color: var(--j-primary);
 }
 
 .jira-column-header {
@@ -641,10 +726,8 @@
   justify-content: space-between;
   padding: 12px 12px 8px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  color: #626f86;
-  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--j-text-subtle);
   position: sticky;
   top: 0;
   background: inherit;
@@ -656,30 +739,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: #091e420f;
-  color: #44546f;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: 6px;
+  color: var(--j-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
 }
 
 .jira-column-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 4px 8px 10px;
-  flex: 1;
+  padding: 4px 8px 8px;
 }
 
 /* Jira Issue Card */
 .jira-card {
-  background: #ffffff;
+  background: var(--j-bg-surface);
   border-radius: 6px;
   padding: 12px;
-  box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
-  border: 1px solid transparent;
+  box-shadow: var(--j-card-shadow);
+  border: 1px solid var(--j-border);
   cursor: grab;
   transition: background 0.12s, box-shadow 0.12s, border-color 0.12s;
   display: flex;
@@ -689,8 +768,8 @@
 }
 
 .jira-card:hover {
-  background: #f7f8f9;
-  box-shadow: 0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  background: var(--j-bg-surface-hover);
+  box-shadow: var(--j-card-shadow-hover);
 }
 
 .jira-card:active {
@@ -698,14 +777,14 @@
 }
 
 .jira-card.is-top {
-  border-left: 3px solid #0c66e4;
+  border-left: 3px solid var(--j-primary);
 }
 
 .jira-card-title {
   font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
-  color: #172b4d;
+  color: var(--j-text);
   text-align: left;
   background: none;
   border: 0;
@@ -714,12 +793,12 @@
 }
 
 .jira-card-title:hover {
-  color: #0c66e4;
+  color: var(--j-active-text);
 }
 
 .jira-card.is-done .jira-card-title {
   text-decoration: line-through;
-  color: #626f86;
+  color: var(--j-text-muted);
 }
 
 .jira-card-tags {
@@ -751,10 +830,10 @@
 .jira-issue-key {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #626f86;
+  color: var(--j-text-subtle);
   font-family: var(--font-mono);
 }
 
@@ -762,32 +841,35 @@
   width: 15px;
   height: 15px;
   border-radius: 3px;
-  background: #4bade8;
+  background: #e2483d;
   color: #fff;
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
 }
 
+/* Column '+' Bottom Button matching Jira Dark Screenshot */
 .jira-column-create-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--j-border);
+  border-radius: 4px;
   background: transparent;
-  color: #44546f;
-  font-size: 14px;
+  color: var(--j-text-subtle);
+  font-size: 13px;
   font-weight: 500;
-  text-align: left;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .jira-column-create-btn:hover {
-  background: #091e420f;
-  color: #172b4d;
+  background: var(--j-bg-surface-hover);
+  color: var(--j-text);
+  border-color: var(--j-border-input);
 }
 
 /* Status Badges (Atlassian Lozenge style) */
@@ -804,36 +886,36 @@
 }
 
 .jira-lozenge-inbox {
-  background: #f1f2f4;
-  color: #44546f;
+  background: rgba(159, 173, 188, 0.15);
+  color: var(--j-text-subtle);
 }
 
 .jira-lozenge-todo {
-  background: #dcdfe4;
-  color: #172b4d;
+  background: rgba(159, 173, 188, 0.2);
+  color: var(--j-text);
 }
 
 .jira-lozenge-doing {
-  background: #cce0ff;
-  color: #0c66e4;
+  background: rgba(87, 157, 255, 0.2);
+  color: #579dff;
 }
 
 .jira-lozenge-waiting {
-  background: #fff3d6;
-  color: #974f0c;
+  background: rgba(245, 205, 71, 0.2);
+  color: #f5cd47;
 }
 
 .jira-lozenge-done {
-  background: #dcfff1;
-  color: #216e4e;
+  background: rgba(75, 206, 151, 0.2);
+  color: #4bce97;
 }
 
 /* Jira List / Table View */
 .jira-table-wrap {
-  border: 1px solid #dcdfe4;
+  border: 1px solid var(--j-border);
   border-radius: 8px;
   overflow: auto;
-  background: #ffffff;
+  background: var(--j-bg-surface);
 }
 
 .jira-table {
@@ -844,39 +926,39 @@
 }
 
 .jira-table th {
-  background: #f7f8f9;
-  color: #626f86;
+  background: var(--j-bg-sunken);
+  color: var(--j-text-subtle);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   padding: 10px 12px;
-  border-bottom: 1px solid #dcdfe4;
-  border-right: 1px solid #f1f2f4;
+  border-bottom: 1px solid var(--j-border);
+  border-right: 1px solid var(--j-border);
   white-space: nowrap;
   user-select: none;
 }
 
 .jira-table td {
   padding: 9px 12px;
-  border-bottom: 1px solid #f1f2f4;
-  border-right: 1px solid #f7f8f9;
-  color: #172b4d;
+  border-bottom: 1px solid var(--j-border);
+  border-right: 1px solid var(--j-border);
+  color: var(--j-text);
   vertical-align: middle;
 }
 
 .jira-table tr:hover td {
-  background: #f7f8f9;
+  background: var(--j-bg-surface-hover);
 }
 
 @media (max-width: 768px) {
   .jira-sidebar {
     position: fixed;
-    top: 56px;
+    top: 52px;
     bottom: 0;
     left: 0;
     z-index: 50;
-    box-shadow: 0 8px 24px rgba(9, 30, 66, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
   .jira-space-header {
     padding: 12px 14px 0;

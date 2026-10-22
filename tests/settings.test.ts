@@ -20,6 +20,7 @@ describe('Settings & Time Utilities Tests', () => {
     assert.equal(normalized.workdayStart, DEFAULT_SETTINGS.workdayStart);
     assert.equal(normalized.focusMinutes, DEFAULT_SETTINGS.focusMinutes);
     assert.equal(normalized.morningBriefing.enabled, true);
+    assert.equal(normalized.theme, 'dark');
   });
 
   it('normalizeSettings handles empty or invalid object gracefully', () => {

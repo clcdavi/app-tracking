@@ -28,6 +28,8 @@ export const settingsSchema = z.object({
   deadlineReminder: notificationSchema,
   // AI
   aiAutoEstimate: z.boolean(),
+  // Appearance
+  theme: z.enum(['dark', 'light']),
 });
 
 export type UserSettings = z.infer<typeof settingsSchema>;
@@ -45,6 +47,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   eveningReview: { enabled: true, time: '20:00' },
   deadlineReminder: { enabled: true, time: '17:00' },
   aiAutoEstimate: true,
+  theme: 'dark',
 };
 
 /**

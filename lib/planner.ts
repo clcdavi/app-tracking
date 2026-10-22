@@ -43,11 +43,14 @@ const AREA_PREFIXES: Record<string, string> = {
 };
 
 /**
- * Generates a readable Jira-style issue key (e.g., 'TRA-104' or 'DEV-21')
- * deterministically from the task's project/area and ID.
+ * Generates a readable Jira-style issue key (e.g., 'KAN-1', 'TRA-2' or 'TRA-104')
+ * deterministically from the task's project/area and ID (or sequential order when allTasks is provided).
  */
-export function taskKey(t: Pick<Task, 'id' | 'area' | 'project'>): string {
-  const rawPrefix = (t.project || t.area || 'ENF')
+export function taskKey(
+  t: Pick<Task, 'id' | 'area' | 'project'> & { created?: string },
+  allTasks?: Pick<Task, 'id' | 'created'>[]
+): string {
+  const rawPrefix = (t.project || t.area || 'KAN')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z]/g, '')
@@ -55,9 +58,19 @@ export function taskKey(t: Pick<Task, 'id' | 'area' | 'project'>): string {
   const prefix =
     rawPrefix.length >= 3
       ? rawPrefix.slice(0, 3)
-      : AREA_PREFIXES[t.area] || 'ENF';
+      : AREA_PREFIXES[t.area] || 'KAN';
 
-  // Deterministic 2-3 digit number from task.id
+  if (allTasks && allTasks.length > 0) {
+    const sorted = [...allTasks].sort((a, b) =>
+      (a.created || '').localeCompare(b.created || '') || a.id.localeCompare(b.id)
+    );
+    const idx = sorted.findIndex((item) => item.id === t.id);
+    if (idx !== -1) {
+      return `${prefix}-${idx + 1}`;
+    }
+  }
+
+  // Deterministic 2-3 digit number from task.id as fallback
   let hash = 0;
   for (let i = 0; i < t.id.length; i++) {
     hash = (hash * 31 + t.id.charCodeAt(i)) >>> 0;
