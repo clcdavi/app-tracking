@@ -94,16 +94,16 @@ export function SettingsDialog({
             Ajustes y Personalización
           </DialogTitle>
           <DialogDescription className="text-sm jira-text-subtle">
-            Configurá el tema visual de Jira, tu jornada, el temporizador Pomodoro y tus avisos de Telegram.
+            Configurá el tema visual de Enfoco, tu jornada, el temporizador Pomodoro y tus avisos de Telegram.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* SECCIÓN 0: TEMA VISUAL (OSCURO / CLARO JIRA) */}
+          {/* SECCIÓN 0: TEMA VISUAL (OSCURO / CLARO) */}
           <div className="jira-panel-card p-4 space-y-3">
             <div className="flex items-center gap-2 font-semibold text-sm">
               <Palette size={17} className="text-[#579dff]" />
-              <span>Apariencia del Espacio (Tema Jira)</span>
+              <span>Apariencia del Espacio</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -120,7 +120,7 @@ export function SettingsDialog({
                   <Moon size={16} />
                 </span>
                 <div>
-                  <div className="text-xs font-bold">Tema Oscuro (Jira Dark)</div>
+                  <div className="text-xs font-bold">Tema Oscuro</div>
                   <div className="text-[11px] jira-text-subtle">Contraste profundo descanso visual</div>
                 </div>
               </button>
@@ -138,7 +138,7 @@ export function SettingsDialog({
                   <Sun size={16} />
                 </span>
                 <div>
-                  <div className="text-xs font-bold">Tema Claro (Jira Light)</div>
+                  <div className="text-xs font-bold">Tema Claro</div>
                   <div className="text-[11px] jira-text-subtle">Fondo limpio y luminoso</div>
                 </div>
               </button>

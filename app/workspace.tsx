@@ -1231,7 +1231,7 @@ export default function Workspace() {
             <span className="jira-brand-logo">
               <Kanban size={14} />
             </span>
-            <span>Jira · Enfoco</span>
+            <span>Enfoco</span>
           </button>
         </div>
 

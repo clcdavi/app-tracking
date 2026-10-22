@@ -1,7 +1,7 @@
 {
   "name": "Enfoco · Espacio de Kanban",
   "short_name": "Enfoco",
-  "description": "Gestión de tareas, tablero Kanban y enfoque diario estilo Jira Cloud.",
+  "description": "Gestión de tareas, tablero Kanban y enfoque diario.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

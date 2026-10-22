@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Enfoco · Espacio de Kanban",
-  description: "Gestión de proyectos y enfoque diario estilo Jira Cloud.",
+  description: "Gestión de proyectos, tablero Kanban y enfoque diario.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
