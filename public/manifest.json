@@ -1,17 +1,24 @@
 {
-  "name": "Enfoco · Tu día con intención",
+  "name": "Enfoco · Espacio de Kanban",
   "short_name": "Enfoco",
-  "description": "Tus prioridades, un plan posible y seguimiento de lo importante.",
+  "description": "Gestión de tareas, tablero Kanban y enfoque diario estilo Jira Cloud.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#315df5",
+  "orientation": "portrait",
+  "background_color": "#1d2125",
+  "theme_color": "#1d2125",
   "icons": [
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

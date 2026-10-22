@@ -1,0 +1,136 @@
+{
+  "tasks": [
+    {
+      "externalId": "cuentas-hogar-token",
+      "title": "Sanitizar remote de Git y regenerar token GitHub",
+      "area": "Personal",
+      "project": "cuentas hogar",
+      "priority": 1,
+      "minutes": 15,
+      "status": "todo",
+      "deadline": "2026-10-16",
+      "notes": "Remover el Personal Access Token (ghp_...) expuesto en texto plano en la URL del repositorio en .git/config y regenerarlo en GitHub."
+    },
+    {
+      "externalId": "cuentas-hogar-dsstore",
+      "title": "Limpiar .DS_Store e incluirlo en .gitignore",
+      "area": "Personal",
+      "project": "cuentas hogar",
+      "priority": 3,
+      "minutes": 5,
+      "status": "todo",
+      "deadline": "2026-10-30",
+      "notes": "Evitar archivos del sistema de macOS en el repositorio."
+    },
+    {
+      "externalId": "app-roca-fuerte-git",
+      "title": "Inicializar repositorio Git y primer commit",
+      "area": "Iglesia",
+      "project": "appRocaFuerte",
+      "priority": 1,
+      "minutes": 20,
+      "status": "todo",
+      "deadline": "2026-10-17",
+      "notes": "Configurar .gitignore para Expo/React Native y realizar commit inicial del proyecto."
+    },
+    {
+      "externalId": "app-roca-fuerte-firebase",
+      "title": "Descargar google-services.json y GoogleService-Info.plist",
+      "area": "Iglesia",
+      "project": "appRocaFuerte",
+      "priority": 1,
+      "minutes": 20,
+      "status": "waiting",
+      "deadline": "2026-10-18",
+      "notes": "Descargar archivos de configuración desde Firebase Console para habilitar compilaciones de iOS y Android."
+    },
+    {
+      "externalId": "app-roca-fuerte-eas",
+      "title": "Configurar EAS Build y Project ID",
+      "area": "Iglesia",
+      "project": "appRocaFuerte",
+      "priority": 2,
+      "minutes": 30,
+      "status": "todo",
+      "deadline": "2026-10-24",
+      "notes": "Ejecutar eas build:configure y asociar projectId en app.json."
+    },
+    {
+      "externalId": "ventas-rf-docs",
+      "title": "Commitear documentación técnica docs/ y .obsidian/",
+      "area": "Iglesia",
+      "project": "ventasRF",
+      "priority": 2,
+      "minutes": 15,
+      "status": "todo",
+      "deadline": "2026-10-20",
+      "notes": "Subir arquitectura, endpoints API y esquema de base de datos a Git."
+    },
+    {
+      "externalId": "ventas-rf-roles",
+      "title": "Implementar chequeo de roles admin vs staff en app.py",
+      "area": "Iglesia",
+      "project": "ventasRF",
+      "priority": 2,
+      "minutes": 45,
+      "status": "todo",
+      "deadline": "2026-10-25",
+      "notes": "Resolver TODO en línea 755 de app.py para control de accesos."
+    },
+    {
+      "externalId": "pasapalabra-gitignore",
+      "title": "Ignorar carpetas .claude/ y .DS_Store en Git",
+      "area": "Iglesia",
+      "project": "pasapalabra",
+      "priority": 3,
+      "minutes": 10,
+      "status": "todo",
+      "deadline": "2026-10-30",
+      "notes": "Limpiar cambios pendientes y añadir .claude/ al .gitignore."
+    },
+    {
+      "externalId": "enfoco-vps-deploy",
+      "title": "Desplegar última versión de Enfoco en VPS Oracle",
+      "area": "Proyectos",
+      "project": "app-tracking",
+      "priority": 1,
+      "minutes": 45,
+      "status": "todo",
+      "deadline": "2026-10-17",
+      "notes": "Actualizar contenedor Docker en VPS con soporte para rutinas proactivas y Gemini 3.5."
+    },
+    {
+      "externalId": "e-commerce-vps-deploy",
+      "title": "Desplegar contenedores Docker de e_commerce en VPS",
+      "area": "Proyectos",
+      "project": "e_commerce",
+      "priority": 2,
+      "minutes": 45,
+      "status": "todo",
+      "deadline": "2026-10-23",
+      "notes": "Levantar el stack Postgres + Node/Express + Frontend con docker-compose up -d --build."
+    },
+    {
+      "externalId": "vps-monitor-daemon",
+      "title": "Configurar servicio persistente 24/7 de vps-monitor",
+      "area": "Proyectos",
+      "project": "vps-monitor",
+      "priority": 2,
+      "minutes": 30,
+      "status": "todo",
+      "deadline": "2026-10-24",
+      "notes": "Dejar corriendo el bot de Telegram de forma continua para monitoreo y alertas."
+    },
+    {
+      "externalId": "gestion-manicura-backup",
+      "title": "Configurar cron de respaldos diarios para salon_db",
+      "area": "Proyectos",
+      "project": "gestion manicura",
+      "priority": 2,
+      "minutes": 30,
+      "status": "todo",
+      "deadline": "2026-10-26",
+      "notes": "Configurar script pg_dump automatizado hacia almacenamiento seguro."
+    }
+  ]
+}

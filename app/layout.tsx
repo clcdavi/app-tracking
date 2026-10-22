@@ -2,15 +2,20 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const viewport: Viewport = {
-  themeColor: "#315df5",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#1d2125" },
+    { media: "(prefers-color-scheme: light)", color: "#1d2125" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
-  title: "Enfoco · Tu día, con intención",
-  description: "Tus prioridades, un plan posible y seguimiento de lo importante.",
+  title: "Enfoco · Espacio de Kanban",
+  description: "Gestión de proyectos y enfoque diario estilo Jira Cloud.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -20,7 +25,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    apple: "/apple-icon",
   },
 };
 
@@ -30,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className="dark">
       <body className="antialiased">{children}</body>
     </html>
   );

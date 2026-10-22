@@ -195,6 +195,15 @@ export default function Workspace() {
   const [activeTab, setActiveTab] = useState<JiraTab>('board');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [spacesExpanded, setSpacesExpanded] = useState(true);
+  const [mobileCol, setMobileCol] = useState<'all' | TaskStatus>('all');
+
+  function selectSpace(nextSpace: string) {
+    setSpace(nextSpace);
+    setQuickFilter('all');
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setSidebarCollapsed(true);
+    }
+  }
 
   // Board / List Filtering & Grouping state
   const [query, setQuery] = useState('');
@@ -1141,7 +1150,31 @@ export default function Workspace() {
             <span>{key}</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Touch-friendly 1-tap column/status switcher (ideal for iOS Chrome where HTML5 drag is unavailable) */}
+            <select
+              aria-label={`Cambiar columna de ${t.title}`}
+              value={t.status}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                const nextStatus = e.target.value as TaskStatus;
+                void patch(t, {
+                  status: nextStatus,
+                  completed:
+                    nextStatus === 'done'
+                      ? t.completed || new Date().toISOString()
+                      : '',
+                  ...(nextStatus === 'waiting' ? { top: false } : {}),
+                });
+              }}
+              className="md:hidden text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[var(--j-bg-sunken)] border border-[var(--j-border)] jira-text-subtle cursor-pointer"
+            >
+              <option value="inbox">Backlog</option>
+              <option value="todo">To Do</option>
+              <option value="doing">In Progress</option>
+              <option value="waiting">In Review</option>
+              <option value="done">Done</option>
+            </select>
             <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-[var(--j-bg-sunken)] jira-text-subtle">
               {t.minutes}m
             </span>
@@ -1386,16 +1419,22 @@ export default function Workspace() {
           2. BODY: LEFT SIDEBAR + MAIN JIRA WORKSPACE
          ==================================================================== */}
       <div className="jira-body">
+        {/* Mobile Backdrop when sidebar is open */}
+        {!sidebarCollapsed && (
+          <div
+            className="jira-sidebar-backdrop md:hidden"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Left Sidebar */}
         <aside className={`jira-sidebar ${sidebarCollapsed ? 'is-collapsed' : ''}`}>
           {/* Quick Personal Views */}
           <div className="jira-nav-section space-y-0.5">
             <button
               type="button"
-              onClick={() => {
-                setSpace('today');
-                setQuickFilter('all');
-              }}
+              onClick={() => selectSpace('today')}
               className={`jira-nav-item ${space === 'today' ? 'is-active' : ''}`}
             >
               <UserCheck size={15} className="shrink-0" />
@@ -1408,9 +1447,8 @@ export default function Workspace() {
             <button
               type="button"
               onClick={() => {
-                setSpace('inbox');
                 setShowInboxColumn(true);
-                setQuickFilter('all');
+                selectSpace('inbox');
               }}
               className={`jira-nav-item ${space === 'inbox' ? 'is-active' : ''}`}
             >
@@ -1425,10 +1463,7 @@ export default function Workspace() {
 
             <button
               type="button"
-              onClick={() => {
-                setSpace('starred');
-                setQuickFilter('all');
-              }}
+              onClick={() => selectSpace('starred')}
               className={`jira-nav-item ${space === 'starred' ? 'is-active' : ''}`}
             >
               <Star size={15} className="shrink-0" />
@@ -1442,10 +1477,7 @@ export default function Workspace() {
 
             <button
               type="button"
-              onClick={() => {
-                setSpace('attention');
-                setQuickFilter('all');
-              }}
+              onClick={() => selectSpace('attention')}
               className={`jira-nav-item ${space === 'attention' ? 'is-active' : ''}`}
             >
               <Flag size={15} className="shrink-0" />
@@ -1460,9 +1492,8 @@ export default function Workspace() {
             <button
               type="button"
               onClick={() => {
-                setSpace('week');
                 setActiveTab('timeline');
-                setQuickFilter('all');
+                selectSpace('week');
               }}
               className={`jira-nav-item ${space === 'week' ? 'is-active' : ''}`}
             >
@@ -1502,10 +1533,7 @@ export default function Workspace() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSpace('kanban');
-                    setQuickFilter('all');
-                  }}
+                  onClick={() => selectSpace('kanban')}
                   className={`jira-nav-item ${space === 'kanban' ? 'is-active' : ''}`}
                 >
                   <span
@@ -1525,10 +1553,7 @@ export default function Workspace() {
                     <button
                       key={areaName}
                       type="button"
-                      onClick={() => {
-                        setSpace(areaName);
-                        setQuickFilter('all');
-                      }}
+                      onClick={() => selectSpace(areaName)}
                       className={`jira-nav-item ${space === areaName ? 'is-active' : ''}`}
                     >
                       <span
@@ -1552,6 +1577,9 @@ export default function Workspace() {
               type="button"
               onClick={() => {
                 setActiveTab('list');
+                if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                  setSidebarCollapsed(true);
+                }
               }}
               className={`jira-nav-item ${activeTab === 'list' ? 'is-active' : ''}`}
             >
@@ -1563,6 +1591,9 @@ export default function Workspace() {
               type="button"
               onClick={() => {
                 setActiveTab('reports');
+                if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                  setSidebarCollapsed(true);
+                }
               }}
               className={`jira-nav-item ${activeTab === 'reports' ? 'is-active' : ''}`}
             >
@@ -1928,6 +1959,39 @@ export default function Workspace() {
                   </div>
                 )}
 
+                {/* Mobile Column Quick-Switcher Pills (iOS Chrome / Mobile) */}
+                <div className="jira-mobile-col-pills" role="tablist" aria-label="Filtrar columna en móvil">
+                  <button
+                    type="button"
+                    onClick={() => setMobileCol('all')}
+                    className={`jira-mobile-col-pill ${mobileCol === 'all' ? 'is-active' : ''}`}
+                  >
+                    <span>Todas</span>
+                    <span className="opacity-75">({sortedTasks.length})</span>
+                  </button>
+                  {boardColumns.map((col) => {
+                    const count = sortedTasks.filter((t) => {
+                      if (col.status === 'todo' && !showInboxColumn && space !== 'inbox') {
+                        return t.status === 'todo' || t.status === 'inbox';
+                      }
+                      return t.status === col.status;
+                    }).length;
+                    return (
+                      <button
+                        key={col.status}
+                        type="button"
+                        onClick={() => setMobileCol(col.status)}
+                        className={`jira-mobile-col-pill ${
+                          mobileCol === col.status ? 'is-active' : ''
+                        }`}
+                      >
+                        <span>{col.label}</span>
+                        <span className="opacity-75">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {swimlanes.map((lane) => {
                   const isCollapsed = Boolean(collapsedLanes[lane.id]);
                   return (
@@ -1969,6 +2033,8 @@ export default function Workspace() {
                             const dropKey = `${lane.id}-${col.status}`;
                             const isWipExceeded =
                               col.status === 'doing' && colTasks.length > 3;
+                            const hiddenOnMobile =
+                              mobileCol !== 'all' && mobileCol !== col.status;
 
                             return (
                               <section
@@ -1979,6 +2045,10 @@ export default function Workspace() {
                                   void handleColumnDrop(e, col.status, lane.overrides)
                                 }
                                 className={`jira-column ${
+                                  hiddenOnMobile ? 'hidden md:flex' : ''
+                                } ${
+                                  mobileCol === col.status ? 'min-w-full! max-w-full!' : ''
+                                } ${
                                   dragOverColumn === dropKey ? 'is-drag-over' : ''
                                 } ${isWipExceeded ? 'ring-1 ring-amber-500/70' : ''}`}
                               >
@@ -2719,6 +2789,73 @@ export default function Workspace() {
           </div>
         </main>
       </div>
+
+      {/* ====================================================================
+          4.5. MOBILE FIXED BOTTOM BAR (iOS Chrome & Mobile PWA)
+         ==================================================================== */}
+      <nav className="jira-mobile-nav" aria-label="Navegación móvil inferior">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('board');
+            setSidebarCollapsed(true);
+          }}
+          className={`jira-mobile-nav-item ${
+            activeTab === 'board' && space !== 'today' && sidebarCollapsed ? 'is-active' : ''
+          }`}
+        >
+          <Kanban size={18} />
+          <span>Tablero</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('list');
+            setSidebarCollapsed(true);
+          }}
+          className={`jira-mobile-nav-item ${
+            activeTab === 'list' && sidebarCollapsed ? 'is-active' : ''
+          }`}
+        >
+          <ListTodo size={18} />
+          <span>Lista</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => startTask()}
+          disabled={loading || auth}
+          className="jira-mobile-nav-fab"
+          aria-label="Crear nuevo pendiente"
+        >
+          <Plus size={20} className="stroke-[2.5]" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setSpace('today');
+            setActiveTab('board');
+            setSidebarCollapsed(true);
+          }}
+          className={`jira-mobile-nav-item ${
+            space === 'today' && sidebarCollapsed ? 'is-active' : ''
+          }`}
+        >
+          <UserCheck size={18} />
+          <span>Para ti</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className={`jira-mobile-nav-item ${!sidebarCollapsed ? 'is-active' : ''}`}
+        >
+          <Layers size={18} />
+          <span>Espacios</span>
+        </button>
+      </nav>
 
       {/* ====================================================================
           5. JIRA-STYLE 2-COLUMN ISSUE DETAIL & CREATE MODAL

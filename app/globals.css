@@ -951,22 +951,184 @@
   background: var(--j-bg-surface-hover);
 }
 
+/* Mobile Bottom Tab Bar & iOS Safe Area Support */
+.jira-mobile-nav {
+  display: none;
+}
+
+.jira-mobile-col-pills {
+  display: none;
+}
+
+.jira-sidebar-backdrop {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  .jira-topnav {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    min-height: calc(52px + env(safe-area-inset-top, 0px));
+    padding-left: 10px;
+    padding-right: 10px;
+    gap: 8px;
+  }
+
+  .jira-brand span:last-child {
+    display: none;
+  }
+
+  .jira-create-btn span {
+    display: none;
+  }
+
+  .jira-create-btn {
+    padding: 0 10px;
+  }
+
+  .jira-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: calc(52px + env(safe-area-inset-top, 0px));
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 45;
+  }
+
   .jira-sidebar {
     position: fixed;
-    top: 52px;
+    top: calc(52px + env(safe-area-inset-top, 0px));
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    width: 268px;
+    min-width: 268px;
+    z-index: 50;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+
+  .jira-space-header {
+    padding: 10px 12px 0;
+  }
+
+  .jira-space-title {
+    font-size: 17px;
+  }
+
+  .jira-subtoolbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .jira-board-search {
+    flex: 1;
+    width: auto;
+    min-width: 120px;
+  }
+
+  .jira-board-search:focus-within {
+    width: auto;
+  }
+
+  .jira-canvas {
+    padding: 4px 12px calc(76px + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile Column Switcher Pills */
+  .jira-mobile-col-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .jira-mobile-col-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .jira-mobile-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid var(--j-border);
+    background: var(--j-bg-sunken);
+    color: var(--j-text-subtle);
+    transition: all 0.12s;
+  }
+
+  .jira-mobile-pill.is-active {
+    background: var(--j-bg-selected);
+    border-color: var(--j-primary);
+    color: var(--j-active-text);
+  }
+
+  /* Touch-friendly Kanban columns on mobile */
+  .jira-board {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+  }
+
+  .jira-column {
+    width: calc(100vw - 28px);
+    min-width: calc(100vw - 28px);
+    max-width: calc(100vw - 28px);
+    scroll-snap-align: center;
+  }
+
+  /* Fixed Bottom Navigation Bar for iOS Chrome / Safari */
+  .jira-mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    height: calc(58px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--j-bg-canvas);
+    border-top: 1px solid var(--j-border);
+    position: fixed;
     bottom: 0;
     left: 0;
-    z-index: 50;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    right: 0;
+    z-index: 48;
   }
-  .jira-space-header {
-    padding: 12px 14px 0;
+
+  .jira-mobile-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--j-text-subtle);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 2px;
   }
-  .jira-subtoolbar {
-    padding: 10px 14px;
+
+  .jira-mobile-nav-btn.is-active {
+    color: var(--j-active-text);
   }
-  .jira-canvas {
-    padding: 4px 14px 20px;
+
+  .jira-mobile-fab {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--j-primary);
+    color: var(--j-primary-text);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 2px 8px rgba(87, 157, 255, 0.35);
   }
 }
