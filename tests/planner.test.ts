@@ -1,11 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  today,
   addDays,
   dayLabel,
   attention,
-  reason,
   score,
   suggestions,
   newTask,

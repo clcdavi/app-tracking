@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { users, tasks, userSettings, notificationLogs } from '@/db/schema';
 import { eq, and, ne, lte, desc } from 'drizzle-orm';
-import { normalizeSettings, type UserSettings } from './settings';
+import { normalizeSettings } from './settings';
 import { createTelegramBot } from './telegram-bot';
 import { InlineKeyboard } from 'grammy';
 
@@ -59,7 +59,6 @@ export async function sendMorningBriefing(userId: string, isManualTest = false):
     .orderBy(desc(tasks.top), desc(tasks.priority));
 
   const pending = userTasks.filter((t) => t.status !== 'done');
-  const top = pending.filter((t) => t.top);
   const totalMinutes = pending.reduce((s, t) => s + t.minutes, 0);
 
   let msg = `☀️ <b>¡Buen día, ${escapeHtml(user.displayName)}!</b>\n\n`;

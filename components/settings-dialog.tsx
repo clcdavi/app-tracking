@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -47,11 +47,15 @@ export function SettingsDialog({
   const [saving, setSaving] = useState(false);
   const [testingType, setTestingType] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open && initialSettings) {
-      setForm(initialSettings);
-    }
-  }, [open, initialSettings]);
+  // Sincronizar el formulario al abrir el diálogo o cuando cambian los ajustes
+  const [prevSync, setPrevSync] = useState<{ open: boolean; settings: UserSettings | undefined }>({
+    open,
+    settings: initialSettings,
+  });
+  if (prevSync.open !== open || prevSync.settings !== initialSettings) {
+    setPrevSync({ open, settings: initialSettings });
+    if (open && initialSettings) setForm(initialSettings);
+  }
 
   async function handleSave() {
     setSaving(true);

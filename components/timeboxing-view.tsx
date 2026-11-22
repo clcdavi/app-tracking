@@ -48,11 +48,16 @@ export function TimeboxingView({
   }, []);
 
   const schedule = useMemo(() => {
-    let currentMin = timeToMinutes(workdayStart);
-    return tasks.map((task) => {
-      const startMin = currentMin;
+    const firstStart = timeToMinutes(workdayStart);
+    const startMins: number[] = [];
+    let cursor = firstStart;
+    for (const task of tasks) {
+      startMins.push(cursor);
+      cursor += task.minutes || 30;
+    }
+    return tasks.map((task, i) => {
+      const startMin = startMins[i];
       const endMin = startMin + (task.minutes || 30);
-      currentMin = endMin;
 
       const isCurrentSlot =
         currentMinutesInBsAs >= startMin && currentMinutesInBsAs < endMin;

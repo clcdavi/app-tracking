@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, type FormEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Target, Lock, Mail, User, ArrowRight, LoaderCircle } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 

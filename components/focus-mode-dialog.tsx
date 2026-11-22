@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -41,29 +41,28 @@ export function FocusModeDialog({
   onCompleteTask,
 }: FocusModeDialogProps) {
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
-  const [selectedTaskId, setSelectedTaskId] = useState<string>(initialTaskId || '');
+  const [pickedTaskId, setSelectedTaskId] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState<number>(focusMinutes * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [audioActive, setAudioActive] = useState<boolean>(soundEnabled);
 
-  // Sync initial task
-  useEffect(() => {
-    if (initialTaskId) {
-      setSelectedTaskId(initialTaskId);
-    } else if (tasks.length > 0 && !selectedTaskId) {
-      const topPending = tasks.find((t) => t.status !== 'done');
-      if (topPending) setSelectedTaskId(topPending.id);
-    }
-  }, [initialTaskId, tasks, selectedTaskId]);
+  // Tarea activa derivada: la inicial manda; si no, la elegida; si no, la primera pendiente.
+  const selectedTaskId =
+    initialTaskId ||
+    pickedTaskId ||
+    tasks.find((t) => t.status !== 'done')?.id ||
+    '';
 
-  // Sync timer duration if mode changes or dialog opens
-  useEffect(() => {
+  // Reiniciar el temporizador cuando se abre el diálogo o cambian modo/duraciones
+  const resetKey = `${open}|${mode}|${focusMinutes}|${breakMinutes}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     if (open) {
-      const duration = mode === 'focus' ? focusMinutes * 60 : breakMinutes * 60;
-      setSecondsLeft(duration);
+      setSecondsLeft(mode === 'focus' ? focusMinutes * 60 : breakMinutes * 60);
       setIsRunning(false);
     }
-  }, [open, mode, focusMinutes, breakMinutes]);
+  }
 
   const activeTask = tasks.find((t) => t.id === selectedTaskId) || null;
 
@@ -96,15 +95,15 @@ export function FocusModeDialog({
   }, [audioActive]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isRunning && secondsLeft > 0) {
-      interval = setInterval(() => {
-        setSecondsLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (isRunning && secondsLeft === 0) {
+    if (!isRunning) return;
+    const id = setTimeout(() => {
+      if (secondsLeft > 1) {
+        setSecondsLeft(secondsLeft - 1);
+        return;
+      }
+      // Terminó el ciclo: avisar y pasar al otro modo
       setIsRunning(false);
       playNotificationSound();
-      // Auto-toggle to the other mode
       if (mode === 'focus') {
         setMode('break');
         setSecondsLeft(breakMinutes * 60);
@@ -112,10 +111,8 @@ export function FocusModeDialog({
         setMode('focus');
         setSecondsLeft(focusMinutes * 60);
       }
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    }, 1000);
+    return () => clearTimeout(id);
   }, [isRunning, secondsLeft, mode, focusMinutes, breakMinutes, playNotificationSound]);
 
   const minutes = Math.floor(secondsLeft / 60);

@@ -2,8 +2,8 @@ import { Bot, InlineKeyboard, type Context } from 'grammy';
 import { db } from '@/db';
 import { users, tasks } from '@/db/schema';
 import { eq, and, gt, desc, ne, or, isNull } from 'drizzle-orm';
-import { parseTelegramTask, detectTelegramIntent, type ParsedTelegramTask } from './telegram-parser';
-import { processWithGemini, type TaskContextItem } from './gemini';
+import { parseTelegramTask, detectTelegramIntent } from './telegram-parser';
+import { processWithGemini } from './gemini';
 
 declare global {
   var __enfoco_telegram_bot: Bot | undefined;
@@ -101,8 +101,8 @@ async function executeCreateTask(
 async function executeUpdateTask(
   ctx: Context,
   user: { id: string; displayName: string },
-  lastTask: any,
-  updates: any,
+  lastTask: { id: string },
+  updates: Partial<typeof tasks.$inferInsert>,
   replyPrefix?: string
 ) {
   if (!lastTask) {
@@ -352,7 +352,7 @@ async function executeCompleteLast(
 async function executeDeleteLast(
   ctx: Context,
   user: { id: string; displayName: string },
-  lastTask: any,
+  lastTask: { id: string; title: string },
   replyPrefix?: string
 ) {
   if (!lastTask) {
@@ -1002,12 +1002,13 @@ async function runLongPollingLoop(bot: Bot) {
 
       console.log('[Telegram Bot] Long polling finalizado de forma normal.');
       break;
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (globalThis.__enfoco_telegram_bot_stopping) {
         break;
       }
       consecutiveErrors++;
-      const errMsg = err?.message || err?.description || String(err);
+      const e = err as { message?: string; description?: string };
+      const errMsg = e?.message || e?.description || String(err);
       console.error(`[Telegram Bot] Error en long polling (intento ${consecutiveErrors}):`, errMsg);
 
       // Backoff: 3s up to 15s

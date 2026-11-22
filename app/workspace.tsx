@@ -333,6 +333,8 @@ export default function Workspace() {
     try {
       const storedTheme = localStorage.getItem('enfoco_theme');
       if (storedTheme === 'light' || storedTheme === 'dark') {
+        // Leer localStorage solo es posible en el cliente tras hidratar (evita mismatch SSR)
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTheme(storedTheme);
       }
     } catch {}

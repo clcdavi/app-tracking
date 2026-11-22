@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { tasks, dailyBudgets } from '@/db/schema';
 import { eq, inArray, sql, and } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Task, Data } from '@/lib/planner';
+import type { Task } from '@/lib/planner';
 
 export const dynamic = 'force-dynamic';
 
