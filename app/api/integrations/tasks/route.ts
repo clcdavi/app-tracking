@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { integrationKeys, tasks } from '@/db/schema';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql, ilike, or, asc } from 'drizzle-orm';
+import { authenticateIntegration, publicExternalId } from '@/lib/integration-auth';
 import {
   apiReply,
   hashIntegrationToken,
@@ -183,5 +184,53 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Import integration tasks error:', error);
     return reply({ error: 'No se pudieron importar las tareas.' }, 503);
+  }
+}
+
+const listQuery = z.object({
+  status: z.enum(['inbox', 'todo', 'doing', 'waiting', 'done']).optional(),
+  project: z.string().max(120).optional(),
+  area: z.enum(['Personal', 'Trabajo', 'Estudio', 'Iglesia', 'Proyectos']).optional(),
+  planDate: dateSchema.optional(),
+  q: z.string().max(120).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(200),
+});
+
+export async function GET(req: Request) {
+  const auth = await authenticateIntegration(req);
+  if (auth instanceof Response) return auth;
+
+  try {
+    const params = Object.fromEntries(new URL(req.url).searchParams);
+    const parsed = listQuery.safeParse(params);
+    if (!parsed.success) {
+      return reply({ error: parsed.error.issues[0]?.message ?? 'Filtros no válidos.' }, 400);
+    }
+    const f = parsed.data;
+
+    const conditions = [eq(tasks.userId, auth.userId)];
+    if (f.status) conditions.push(eq(tasks.status, f.status));
+    if (f.project) conditions.push(eq(tasks.project, f.project));
+    if (f.area) conditions.push(eq(tasks.area, f.area));
+    if (f.planDate !== undefined) conditions.push(eq(tasks.planDate, f.planDate));
+    if (f.q) {
+      const like = `%${f.q.replace(/[%_\\]/g, '\\$&')}%`;
+      conditions.push(or(ilike(tasks.title, like), ilike(tasks.notes, like))!);
+    }
+
+    const rows = await db
+      .select()
+      .from(tasks)
+      .where(and(...conditions))
+      .orderBy(asc(tasks.planDate), asc(tasks.deadline), asc(tasks.createdAt))
+      .limit(f.limit);
+
+    return reply({
+      count: rows.length,
+      tasks: rows.map((t) => ({ ...t, externalId: publicExternalId(t.externalRef) })),
+    });
+  } catch (error) {
+    console.error('List integration tasks error:', error);
+    return reply({ error: 'No se pudieron listar las tareas.' }, 503);
   }
 }
